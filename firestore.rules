@@ -1,0 +1,100 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (from Firebase Auth)
+    // Fields:
+    //   - email: string (required)
+    //   - name: string (required)
+    //   - role: string (required, 'user' or 'admin')
+    //   - createdAt: string (required, ISO 8601 date string)
+    //
+    // Collection: users/{userId}/messages
+    // Document ID: messageId (auto-generated or timestamp)
+    // Fields:
+    //   - sender: string (required, 'user' or 'maya')
+    //   - text: string (required)
+    //   - timestamp: number (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        (request.auth.token.email == "xrihman@gmail.com" && request.auth.token.email_verified == true)
+      );
+    }
+    
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+    
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+    
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+    
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['email', 'name', 'role', 'createdAt']) &&
+             isValidEmail(data.email) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.role in ['user', 'admin'] &&
+             isValidDateString(data.createdAt);
+    }
+    
+    function isValidMessage(data) {
+      return hasOnlyAllowedFields(['sender', 'text', 'timestamp']) &&
+             data.sender in ['user', 'maya'] &&
+             data.text is string && data.text.size() <= 10000 &&
+             data.timestamp is number;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Users can create their own profile, but cannot make themselves admin unless they are the bootstrapped admin
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (
+        request.resource.data.role == 'user' || isAdmin()
+      );
+      
+      // Users can update their own profile, but cannot change their role
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && (
+        request.resource.data.role == resource.data.role || isAdmin()
+      ) && request.resource.data.createdAt == resource.data.createdAt;
+      
+      allow delete: if isAdmin();
+      
+      match /messages/{messageId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidMessage(request.resource.data);
+        allow update: if isOwner(userId) && isValidMessage(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+  }
+}

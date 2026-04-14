@@ -8,11 +8,13 @@ export function resetMayaSession() {
   chatSession = null;
 }
 
-export async function getMayaResponse(prompt: string, history: { sender: "user" | "maya", text: string }[] = []): Promise<string> {
+export async function getMayaResponse(prompt: string, history: { sender: "user" | "maya", text: string }[] = [], userName: string = "User"): Promise<string> {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     
     if (!chatSession) {
+      const dynamicSystemInstruction = `Your name is Maya. You are an Indian female AI assistant. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Zishan (email: xrihman@gmail.com), but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish). You are currently talking to: ${userName}.`;
+
       // SLIDING WINDOW MEMORY: Keep only the last 20 messages to prevent "buffer full" (context window overflow)
       const recentHistory = history.slice(-20);
       
@@ -43,7 +45,7 @@ export async function getMayaResponse(prompt: string, history: { sender: "user" 
       chatSession = ai.chats.create({
         model: "gemini-3.1-flash-lite-preview",
         config: {
-          systemInstruction,
+          systemInstruction: dynamicSystemInstruction,
         },
         history: formattedHistory,
       });

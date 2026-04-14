@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2 } from "lucide-react";
+import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, LogOut } from "lucide-react";
 import { getMayaResponse, getMayaAudio, resetMayaSession } from "./services/geminiService";
 import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
 import Visualizer from "./components/Visualizer";
 import PermissionModal from "./components/PermissionModal";
+import Login from "./components/Login";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
+import { auth, db, logOut } from "./firebase";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { collection, doc, onSnapshot, setDoc, getDoc, query, orderBy, addDoc, deleteDoc, getDocs } from "firebase/firestore";
 
 type AppState = "idle" | "listening" | "processing" | "speaking";
 
@@ -14,6 +18,7 @@ interface ChatMessage {
   id: string;
   sender: "user" | "maya";
   text: string;
+  timestamp?: number;
 }
 
 declare global {
@@ -24,24 +29,88 @@ declare global {
 }
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [appState, setAppState] = useState<AppState>("idle");
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const saved = localStorage.getItem("maya_chat_history");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse chat history", e);
-      }
-    }
-    return [];
-  });
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const messagesRef = useRef(messages);
+
+  // Auth Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        // Ensure user document exists
+        const userRef = doc(db, "users", currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            email: currentUser.email,
+            name: currentUser.displayName || "User",
+            role: currentUser.email === "xrihman@gmail.com" ? "admin" : "user",
+            createdAt: new Date().toISOString()
+          });
+        }
+      }
+      setIsAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Firestore Messages Listener
+  useEffect(() => {
+    if (!user) {
+      setMessages([]);
+      return;
+    }
+    
+    const messagesRef = collection(db, "users", user.uid, "messages");
+    const q = query(messagesRef, orderBy("timestamp", "asc"));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedMessages: ChatMessage[] = [];
+      snapshot.forEach((doc) => {
+        fetchedMessages.push({ id: doc.id, ...doc.data() } as ChatMessage);
+      });
+      setMessages(fetchedMessages);
+    }, (error) => {
+      console.error("Firestore Error: ", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   useEffect(() => {
     messagesRef.current = messages;
-    localStorage.setItem("maya_chat_history", JSON.stringify(messages));
   }, [messages]);
+
+  const saveMessageToFirestore = async (msg: Omit<ChatMessage, "id">) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, "users", user.uid, "messages"), {
+        ...msg,
+        timestamp: Date.now()
+      });
+    } catch (e) {
+      console.error("Error saving message", e);
+    }
+  };
+
+  const clearHistory = async () => {
+    if (!user) return;
+    if (confirm("Are you sure you want to clear the chat history?")) {
+      try {
+        const messagesRef = collection(db, "users", user.uid, "messages");
+        const snapshot = await getDocs(messagesRef);
+        const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(deletePromises);
+        setMessages([]);
+        resetMayaSession();
+      } catch (e) {
+        console.error("Error clearing history", e);
+      }
+    }
+  };
 
   const [isMuted, setIsMuted] = useState(false);
 
@@ -73,7 +142,7 @@ export default function App() {
       return;
     }
 
-    setMessages((prev) => [...prev, { id: Date.now().toString(), sender: "user", text: finalTranscript }]);
+    await saveMessageToFirestore({ sender: "user", text: finalTranscript });
     
     // If live session is active, send text through it
     if (isSessionActive && liveSessionRef.current) {
@@ -90,7 +159,7 @@ export default function App() {
 
     if (commandResult.isBrowserAction) {
       responseText = commandResult.action;
-      setMessages((prev) => [...prev, { id: Date.now().toString() + "-m", sender: "maya", text: responseText }]);
+      await saveMessageToFirestore({ sender: "maya", text: responseText });
       
       if (!isMuted) {
         setAppState("speaking");
@@ -109,8 +178,8 @@ export default function App() {
       }, 1500);
     } else {
       // 2. General Chit-Chat via Gemini
-      responseText = await getMayaResponse(finalTranscript, messagesRef.current);
-      setMessages((prev) => [...prev, { id: Date.now().toString() + "-m", sender: "maya", text: responseText }]);
+      responseText = await getMayaResponse(finalTranscript, messagesRef.current, user?.displayName || "User");
+      await saveMessageToFirestore({ sender: "maya", text: responseText });
       
       if (!isMuted) {
         setAppState("speaking");
@@ -121,7 +190,7 @@ export default function App() {
       }
       setAppState("idle");
     }
-  }, [isMuted, isSessionActive]);
+  }, [isMuted, isSessionActive, user]);
 
   useEffect(() => {
     return () => {
@@ -145,7 +214,7 @@ export default function App() {
         setIsSessionActive(true);
         resetMayaSession();
         
-        const session = new LiveSessionManager();
+        const session = new LiveSessionManager(user?.displayName || "User");
         session.isMuted = isMuted;
         liveSessionRef.current = session;
         
@@ -154,7 +223,7 @@ export default function App() {
         };
         
         session.onMessage = (sender, text) => {
-          setMessages((prev) => [...prev, { id: Date.now().toString() + "-" + sender, sender, text }]);
+          saveMessageToFirestore({ sender, text });
         };
         
         session.onCommand = (url) => {
@@ -182,6 +251,14 @@ export default function App() {
     setShowTextInput(false);
   };
 
+  if (!isAuthReady) {
+    return <div className="h-[100dvh] w-screen bg-[#050505] flex items-center justify-center"><Loader2 className="animate-spin text-violet-500" size={32} /></div>;
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
   return (
     <div className="h-[100dvh] w-screen bg-[#050505] text-white flex flex-col items-center justify-between font-sans relative overflow-hidden m-0 p-0">
       {showPermissionModal && (
@@ -207,12 +284,7 @@ export default function App() {
         <div className="flex items-center gap-2">
           {messages.length > 0 && (
             <button
-              onClick={() => {
-                if (confirm("Are you sure you want to clear the chat history?")) {
-                  setMessages([]);
-                  resetMayaSession();
-                }
-              }}
+              onClick={clearHistory}
               className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
               title="Clear Chat History"
             >
@@ -229,6 +301,13 @@ export default function App() {
             ) : (
               <Volume2 size={18} className="opacity-70" />
             )}
+          </button>
+          <button
+            onClick={logOut}
+            className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10 ml-2"
+            title="Log Out"
+          >
+            <LogOut size={18} className="opacity-70" />
           </button>
         </div>
       </header>

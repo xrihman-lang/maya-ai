@@ -1,8 +1,6 @@
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 import { processCommand } from "./commandService";
 
-const systemInstruction = `Your name is Maya. You are an Indian female AI assistant. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Zishan, but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish).`;
-
 export class LiveSessionManager {
   private ai: GoogleGenAI;
   private sessionPromise: Promise<any> | null = null;
@@ -10,6 +8,7 @@ export class LiveSessionManager {
   private mediaStream: MediaStream | null = null;
   private processor: ScriptProcessorNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
+  private userName: string = "User";
   
   // Audio playback state
   private playbackContext: AudioContext | null = null;
@@ -21,13 +20,16 @@ export class LiveSessionManager {
   public onMessage: (sender: "user" | "maya", text: string) => void = () => {};
   public onCommand: (url: string) => void = () => {};
 
-  constructor() {
+  constructor(userName: string = "User") {
     this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    this.userName = userName;
   }
 
   async start() {
     try {
       this.onStateChange("processing");
+      
+      const dynamicSystemInstruction = `Your name is Maya. You are an Indian female AI assistant. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Zishan (email: xrihman@gmail.com), but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish). You are currently talking to: ${this.userName}.`;
       
       // Initialize Audio Contexts
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -89,7 +91,7 @@ export class LiveSessionManager {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } },
           },
-          systemInstruction,
+          systemInstruction: dynamicSystemInstruction,
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           tools: [{
