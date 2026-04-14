@@ -1,9 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { signInWithGoogle } from '../firebase';
 import { motion } from 'motion/react';
-import { LogIn } from 'lucide-react';
+import { LogIn, AlertCircle } from 'lucide-react';
 
 export default function Login() {
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {
+    try {
+      setError(null);
+      setIsLoading(true);
+      await signInWithGoogle();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to sign in with Google. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="h-[100dvh] w-screen bg-[#050505] text-white flex flex-col items-center justify-center font-sans relative overflow-hidden m-0 p-0">
       {/* Cinematic Background Gradients */}
@@ -26,12 +42,20 @@ export default function Login() {
           <p className="text-white/60">Your Personal AI Assistant</p>
         </div>
 
+        {error && (
+          <div className="w-full p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3 text-left">
+            <AlertCircle className="text-red-400 shrink-0 mt-0.5" size={18} />
+            <p className="text-sm text-red-200">{error}</p>
+          </div>
+        )}
+
         <button
-          onClick={signInWithGoogle}
-          className="w-full group relative flex items-center justify-center gap-3 px-8 py-4 rounded-full font-medium tracking-wide transition-all duration-300 bg-white/10 text-white border border-white/20 hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98]"
+          onClick={handleLogin}
+          disabled={isLoading}
+          className="w-full group relative flex items-center justify-center gap-3 px-8 py-4 rounded-full font-medium tracking-wide transition-all duration-300 bg-white/10 text-white border border-white/20 hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
         >
           <LogIn size={20} className="group-hover:translate-x-1 transition-transform" />
-          <span>Sign in with Google</span>
+          <span>{isLoading ? "Signing in..." : "Sign in with Google"}</span>
         </button>
       </motion.div>
     </div>

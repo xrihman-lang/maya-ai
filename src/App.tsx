@@ -40,16 +40,20 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // Ensure user document exists
-        const userRef = doc(db, "users", currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-          await setDoc(userRef, {
-            email: currentUser.email,
-            name: currentUser.displayName || "User",
-            role: currentUser.email === "xrihman@gmail.com" ? "admin" : "user",
-            createdAt: new Date().toISOString()
-          });
+        try {
+          // Ensure user document exists
+          const userRef = doc(db, "users", currentUser.uid);
+          const userSnap = await getDoc(userRef);
+          if (!userSnap.exists()) {
+            await setDoc(userRef, {
+              email: currentUser.email,
+              name: currentUser.displayName || "User",
+              role: currentUser.email === "xrihman@gmail.com" ? "admin" : "user",
+              createdAt: new Date().toISOString()
+            });
+          }
+        } catch (err) {
+          console.error("Error initializing user document:", err);
         }
       }
       setIsAuthReady(true);
