@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, LogOut } from "lucide-react";
+import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, LogOut, Shield } from "lucide-react";
 import { getMayaResponse, getMayaAudio, resetMayaSession } from "./services/geminiService";
 import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
 import Visualizer from "./components/Visualizer";
 import PermissionModal from "./components/PermissionModal";
 import Login from "./components/Login";
+import AdminDashboard from "./components/AdminDashboard";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
 import { auth, db, logOut } from "./firebase";
@@ -21,6 +22,17 @@ interface ChatMessage {
   timestamp?: number;
 }
 
+interface SystemSettings {
+  isMaintenance: boolean;
+  appVersion: string;
+  emergencyMessage: string;
+}
+
+interface BroadcastData {
+  message: string;
+  timestamp: number;
+}
+
 declare global {
   interface Window {
     SpeechRecognition: any;
@@ -30,10 +42,35 @@ declare global {
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [appState, setAppState] = useState<AppState>("idle");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [showAdminRoute, setShowAdminRoute] = useState(false);
+  const [sysSettings, setSysSettings] = useState<SystemSettings | null>(null);
+  const [broadcast, setBroadcast] = useState<BroadcastData | null>(null);
+  const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState<number>(0);
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem("maya_chat_history");
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("Failed to parse chat history", e);
+    }
+    return [];
+  });
   const messagesRef = useRef(messages);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+    try {
+      localStorage.setItem("maya_chat_history", JSON.stringify(messages));
+    } catch (e) {
+      console.error("Failed to save chat history", e);
+    }
+  }, [messages]);
 
   // Auth Listener
   useEffect(() => {
@@ -41,24 +78,57 @@ export default function App() {
       setUser(currentUser);
       if (currentUser) {
         try {
-          // Ensure user document exists
           const userRef = doc(db, "users", currentUser.uid);
           const userSnap = await getDoc(userRef);
+          let role = currentUser.email === "mohdalikhan990x@gmail.com" ? "admin" : "user";
           if (!userSnap.exists()) {
             await setDoc(userRef, {
               email: currentUser.email,
               name: currentUser.displayName || "User",
-              role: currentUser.email === "xrihman@gmail.com" ? "admin" : "user",
+              role: role,
               createdAt: new Date().toISOString()
             });
+          } else {
+            role = userSnap.data().role;
           }
+          setIsAdmin(role === "admin");
         } catch (err) {
           console.error("Error initializing user document:", err);
+          setIsAdmin(currentUser.email === "mohdalikhan990x@gmail.com"); 
         }
+      } else {
+        setIsAdmin(false);
       }
       setIsAuthReady(true);
     });
     return () => unsubscribe();
+  }, []);
+
+  // System Settings Header Listener
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "settings", "global_config"), (docSnap) => {
+      if (docSnap.exists()) {
+        setSysSettings(docSnap.data() as SystemSettings);
+      } else {
+        setSysSettings({ isMaintenance: false, appVersion: "1.0.0", emergencyMessage: "" });
+      }
+    });
+
+    // Global Broadcast Listener
+    const unsubBroadcast = onSnapshot(doc(db, "settings", "broadcast"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setBroadcast({
+          message: data.message || "",
+          timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : (data.timestamp || 0)
+        });
+      }
+    });
+
+    return () => {
+      unsub();
+      unsubBroadcast();
+    };
   }, []);
 
   // Firestore Messages Listener
@@ -256,7 +326,27 @@ export default function App() {
   };
 
   if (!isAuthReady) {
-    return <div className="h-[100dvh] w-screen bg-[#050505] flex items-center justify-center"><Loader2 className="animate-spin text-violet-500" size={32} /></div>;
+    return <div className="h-[100dvh] w-screen bg-[#050505] flex items-center justify-center"><Loader2 className="animate-spin text-red-500" size={32} /></div>;
+  }
+
+  // Handle Maintenance Mode
+  if ((sysSettings?.isMaintenance || sysSettings?.isUpdating) && !isAdmin) {
+    return (
+      <div className="h-[100dvh] w-screen bg-[#050505] text-white flex flex-col items-center justify-center font-sans">
+        <Shield className="text-red-500 mb-6" size={64} />
+        <h1 className="text-3xl font-bold mb-4">Under Maintenance</h1>
+        <p className="text-white/60 mb-8 max-w-md text-center">
+          Maya is currently under maintenance for version {sysSettings?.appVersion || "1.0.0"}. Please check back later.
+        </p>
+        <button onClick={logOut} className="px-6 py-3 bg-red-900/30 border border-red-900 hover:bg-red-900/50 rounded-full transition-colors">
+          Logout
+        </button>
+      </div>
+    );
+  }
+
+  if (showAdminRoute) {
+    return <AdminDashboard onExit={() => setShowAdminRoute(false)} />;
   }
 
   if (!user) {
@@ -265,27 +355,81 @@ export default function App() {
 
   return (
     <div className="h-[100dvh] w-screen bg-[#050505] text-white flex flex-col items-center justify-between font-sans relative overflow-hidden m-0 p-0">
+      {/* Global Broadcast Message Top Banner */}
+      <AnimatePresence>
+        {broadcast?.message && broadcast.timestamp > dismissedBroadcastTime && (
+          <motion.div 
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            className="absolute top-0 left-0 w-full z-[100] p-4 font-sans"
+          >
+            <div className="max-w-4xl mx-auto bg-gradient-to-r from-orange-500 to-red-600 rounded-xl shadow-2xl p-4 flex items-center justify-between border border-orange-400/50">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="text-white shrink-0" size={24} />
+                <p className="text-white font-medium text-sm md:text-base leading-snug">
+                  {broadcast.message}
+                </p>
+              </div>
+              <button 
+                onClick={() => setDismissedBroadcastTime(broadcast.timestamp)}
+                className="px-4 py-2 shrink-0 bg-black/20 hover:bg-black/40 text-white rounded-lg transition-colors font-medium text-sm"
+              >
+                Dismiss
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Emergency Message Broadcast (Legacy / Config) */}
+      <AnimatePresence>
+        {sysSettings?.emergencyMessage && (
+          <motion.div 
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="absolute top-20 left-0 w-full z-50 px-4 flex justify-center pointer-events-none"
+          >
+            <div className="bg-red-600/90 text-white text-sm font-medium px-4 py-2 rounded-full border border-red-400/50 shadow-lg backdrop-blur-md flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              {sysSettings.emergencyMessage}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {showPermissionModal && (
         <PermissionModal 
           onClose={() => setShowPermissionModal(false)} 
         />
       )}
 
-      {/* Cinematic Background Gradients */}
-      <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-violet-900/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-pink-900/20 blur-[120px] rounded-full" />
-      </div>
+      {/* Anime Background */}
+      <div 
+        className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/maya-bg.jpg')", opacity: 0.9 }}
+      />
+      {/* Dark Gradient Overlay for readability */}
+      <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-[#050505]/95 via-[#050505]/40 to-[#050505]/95 pointer-events-none" />
 
       {/* Header */}
       <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-6 py-4 md:px-12 md:py-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-pink-500 flex items-center justify-center font-bold text-sm">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-red-600 to-black border border-red-500/50 flex items-center justify-center font-bold text-sm text-red-100 shadow-[0_0_10px_rgba(220,38,38,0.5)]">
             M
           </div>
           <h1 className="text-xl font-serif font-medium tracking-wide opacity-90">Maya</h1>
         </div>
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={() => setShowAdminRoute(true)}
+              className="p-2 rounded-full bg-red-950/50 hover:bg-red-900 border border-red-900/50 transition-colors"
+              title="Admin Panel"
+            >
+              <Shield size={18} className="text-red-400" />
+            </button>
+          )}
           {messages.length > 0 && (
             <button
               onClick={clearHistory}
@@ -352,9 +496,9 @@ export default function App() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  className="flex items-center gap-2 text-violet-300/80 text-sm md:text-base italic"
+                  className="flex items-center gap-2 text-red-300/80 text-sm md:text-base italic"
                 >
-                  <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                   Listening...
                 </motion.div>
               )}
@@ -386,7 +530,7 @@ export default function App() {
               <button 
                 type="submit"
                 disabled={!textInput.trim()}
-                className="p-2 rounded-full bg-violet-500 hover:bg-violet-600 disabled:opacity-50 disabled:hover:bg-violet-500 transition-colors"
+                className="p-2 rounded-full bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:hover:bg-red-600 transition-colors"
               >
                 <Send size={16} />
               </button>
@@ -401,8 +545,8 @@ export default function App() {
               group relative flex items-center gap-3 px-8 py-4 rounded-full font-medium tracking-wide transition-all duration-300 shadow-2xl
               ${
                 isSessionActive
-                  ? "bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30"
-                  : "bg-white/10 text-white border border-white/20 hover:bg-white/20 hover:scale-105"
+                  ? "bg-red-600/20 text-red-400 border border-red-500/50 hover:bg-red-600/30"
+                  : "bg-black/60 text-red-100 border border-red-500/30 hover:bg-red-950/80 hover:border-red-500/80 hover:scale-105"
               }
             `}
           >

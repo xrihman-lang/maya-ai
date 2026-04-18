@@ -44,13 +44,13 @@ export default function Visualizer({ state }: VisualizerProps) {
     };
   };
 
-  // JARVIS color palette (Cyan/Blue) with Maya's personality (Violet/Pink hints)
+  // Black and Red Anime Theme for Maya
   const getTheme = () => {
     switch (state) {
-      case "listening": return { color: "rgba(139, 92, 246, 1)", glow: "shadow-violet-500/60", border: "border-violet-400" };
-      case "processing": return { color: "rgba(56, 189, 248, 1)", glow: "shadow-sky-400/80", border: "border-sky-400" };
-      case "speaking": return { color: "rgba(236, 72, 153, 1)", glow: "shadow-pink-500/80", border: "border-pink-400" };
-      default: return { color: "rgba(6, 182, 212, 0.8)", glow: "shadow-cyan-500/40", border: "border-cyan-500/50" }; // Cyan for idle
+      case "listening": return { color: "rgba(239, 68, 68, 1)", glow: "shadow-red-500/60", border: "border-red-500" }; // Red-500
+      case "processing": return { color: "rgba(153, 27, 27, 1)", glow: "shadow-red-800/80", border: "border-red-800" }; // Red-800
+      case "speaking": return { color: "rgba(248, 113, 113, 1)", glow: "shadow-red-400/80", border: "border-red-400" }; // Red-400
+      default: return { color: "rgba(220, 38, 38, 0.6)", glow: "shadow-red-600/40", border: "border-red-600/50" }; // Red-600 for idle
     }
   };
 

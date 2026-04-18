@@ -70,9 +70,23 @@ service cloud.firestore {
              data.timestamp is number;
     }
 
+    function isValidSystemSettings(data) {
+      return data.keys().hasAny(['isMaintenance', 'isUpdating', 'appVersion', 'emergencyMessage', 'message', 'timestamp']);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
+    
+    match /{path=**}/messages/{messageId} {
+      allow read: if isAdmin();
+    }
+    
+    match /settings/{document=**} {
+      // Sirf aapki email ID ko edit karne ki permission milegi
+      allow read: if true; 
+      allow write: if request.auth != null && request.auth.token.email == "mohdalikhan990x@gmail.com" && isValidSystemSettings(request.resource.data);
+    }
     
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();

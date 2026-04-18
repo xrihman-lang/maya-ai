@@ -47,9 +47,33 @@
         }
       },
       "required": ["sender", "text", "timestamp"]
+    },
+    "SystemSettings": {
+      "title": "System Settings",
+      "description": "Global application settings controlled by Admins",
+      "type": "object",
+      "properties": {
+        "isMaintenance": {
+          "type": "boolean",
+          "description": "Whether the app is in maintenance mode"
+        },
+        "appVersion": {
+          "type": "string",
+          "description": "Current app version"
+        },
+        "emergencyMessage": {
+          "type": "string",
+          "description": "High priority message shown to all users"
+        }
+      },
+      "required": ["isMaintenance", "appVersion", "emergencyMessage"]
     }
   },
   "firestore": {
+    "/settings/{document}": {
+      "schema": { "$ref": "#/entities/SystemSettings" },
+      "description": "Global application configuration"
+    },
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/User" },
       "description": "User profiles"
