@@ -46,6 +46,7 @@ export default function App() {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [appState, setAppState] = useState<AppState>("idle");
   const [showAdminRoute, setShowAdminRoute] = useState(false);
+  const [firebaseOfflineError, setFirebaseOfflineError] = useState(false);
   const [sysSettings, setSysSettings] = useState<SystemSettings | null>(null);
   const [broadcast, setBroadcast] = useState<BroadcastData | null>(null);
   const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState<number>(0);
@@ -92,8 +93,11 @@ export default function App() {
             role = userSnap.data().role;
           }
           setIsAdmin(role === "admin");
-        } catch (err) {
+        } catch (err: any) {
           console.error("Error initializing user document:", err);
+          if (err.message && err.message.includes("client is offline")) {
+            setFirebaseOfflineError(true);
+          }
           setIsAdmin(currentUser.email === "mohdalikhan990x@gmail.com"); 
         }
       } else {
@@ -327,6 +331,31 @@ export default function App() {
 
   if (!isAuthReady) {
     return <div className="h-[100dvh] w-screen bg-[#050505] flex items-center justify-center"><Loader2 className="animate-spin text-red-500" size={32} /></div>;
+  }
+
+  // Handle Missing Firebase Database
+  if (firebaseOfflineError) {
+    return (
+      <div className="h-[100dvh] w-screen bg-[#050505] text-white flex flex-col items-center justify-center font-sans p-6 text-center">
+        <Shield className="text-red-500 mb-6 mx-auto" size={64} />
+        <h1 className="text-2xl md:text-3xl font-bold mb-4 text-red-50">Database Connection Failed</h1>
+        <div className="bg-red-950/30 border border-red-900 p-6 rounded-2xl max-w-lg mb-8 backdrop-blur-md">
+          <p className="text-red-200 mb-4 font-medium">
+            Firestore Database has not been created yet in your project.
+          </p>
+          <ul className="text-red-400 text-sm text-left list-decimal list-inside space-y-2">
+            <li>Go to <a href="https://console.firebase.google.com/" target="_blank" className="text-red-300 underline">Firebase Console</a></li>
+            <li>Select your project <b>gen-lang-client-0122088221</b></li>
+            <li>Click <b>Build</b> → <b>Firestore Database</b></li>
+            <li>Click <b>Create Database</b></li>
+            <li>Select <b>Start in production mode</b></li>
+          </ul>
+        </div>
+        <button onClick={() => window.location.reload()} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-full transition-colors font-medium">
+          I've created it, Retry
+        </button>
+      </div>
+    );
   }
 
   // Handle Maintenance Mode
