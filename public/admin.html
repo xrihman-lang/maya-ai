@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maya Admin | Command Center</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            serif: ['Georgia', 'serif'],
+          },
+          colors: { 
+            gold: { 400: '#FBBF24', 500: '#D4AF37', 600: '#B4942D', 900: '#4A3D13' } 
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-image: url('https://picsum.photos/seed/cyber-anime/1920/1080?blur=4');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      background-color: #0a0a0a;
+    }
+    .glass {
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    
+    /* Toggle Switch styling */
+    .toggle-checkbox:checked { right: 0; border-color: #D4AF37; }
+    .toggle-checkbox:checked + .toggle-label { background-color: #D4AF37; }
+    .toggle-checkbox { right: 0; z-index: 1; border-color: #4b5563; transition: all 0.3s; }
+  </style>
+</head>
+<body class="text-gray-200 antialiased min-h-screen flex flex-col">
+
+  <!-- OVERLAYS -->
+  <div id="loading" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 backdrop-blur-sm">
+    <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-gold-500 mb-4"></div>
+    <p class="text-gold-400 font-medium tracking-[0.2em] uppercase text-sm">Initializing Maya Core...</p>
+  </div>
+
+  <!-- LOGIN SCREEN -->
+  <div id="login-screen" class="hidden flex-1 flex flex-col items-center justify-center p-4">
+    <div class="glass p-8 md:p-12 rounded-3xl max-w-md w-full text-center border-t-4 border-t-gold-500 relative overflow-hidden">
+      <!-- Glow effect -->
+      <div class="absolute -top-10 -left-10 w-32 h-32 bg-gold-500/20 blur-3xl rounded-full"></div>
+      
+      <h1 class="text-3xl font-bold text-gold-500 mb-2 font-serif tracking-widest uppercase relative z-10">Maya Admin</h1>
+      <p class="text-gray-400 text-sm mb-10 relative z-10">Secure Gateway Portal</p>
+      
+      <button id="login-btn" class="relative z-10 w-full py-3.5 px-4 bg-gradient-to-r from-gold-600 to-gold-500 hover:from-gold-500 hover:to-gold-400 text-black font-bold rounded-xl shadow-[0_0_20px_rgba(212,175,55,0.3)] transition-all flex justify-center items-center gap-3">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
+        Sign In with Google
+      </button>
+      <div id="login-error" class="hidden relative z-10 mt-6 text-red-400 text-sm p-3 bg-red-950/50 rounded-lg border border-red-500/50"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard-screen" class="hidden flex-1 flex flex-col h-screen overflow-hidden">
+    <!-- Navbar -->
+    <header class="glass p-4 px-6 flex justify-between items-center z-20 shrink-0 border-b border-white/5">
+      <div class="flex items-center gap-4">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-gold-900 to-black border border-gold-500 flex items-center justify-center text-gold-400 font-bold font-serif shadow-[0_0_15px_rgba(212,175,55,0.4)]">
+          M
+        </div>
+        <div>
+          <h1 class="text-lg md:text-xl font-bold tracking-widest text-gold-500 uppercase font-serif">Maya Core</h1>
+          <p id="user-email-display" class="text-xs text-gray-400 font-mono"></p>
+        </div>
+      </div>
+      <button id="logout-btn" class="px-4 py-2 bg-red-950/30 border border-red-500/50 text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition-colors text-sm font-medium tracking-wide">
+        Disconnect
+      </button>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 z-10">
+      <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        
+        <!-- Column 1: Controls & Logs -->
+        <div class="lg:col-span-1 flex flex-col gap-6 md:gap-8">
+          
+          <!-- Master Control -->
+          <div class="glass p-6 rounded-2xl flex flex-col relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-20 h-20 bg-red-500/10 blur-2xl rounded-full"></div>
+            <h2 class="text-sm font-bold text-gold-400 mb-6 border-b border-gold-900/50 pb-3 uppercase tracking-[0.15em] flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+              Overrides
+            </h2>
+            
+            <div class="flex items-center justify-between p-4 bg-black/40 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+              <div>
+                <h3 class="font-medium text-white text-sm">Maintenance Mode</h3>
+                <p class="text-[11px] text-gray-500 mt-0.5">Locks out public traffic</p>
+              </div>
+              <div class="relative inline-block w-12 align-middle select-none transition duration-200 ease-in mt-1">
+                  <input type="checkbox" name="toggle" id="maintenance-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-600"/>
+                  <label for="maintenance-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Logs -->
+          <div class="glass p-6 rounded-2xl flex-1 flex flex-col max-h-[500px]">
+            <h2 class="text-sm font-bold text-gold-400 mb-4 border-b border-gold-900/50 pb-3 uppercase tracking-[0.15em] flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+              Live Chat Link
+            </h2>
+            <div class="overflow-y-auto pr-2 space-y-3 flex-1 scrollbar-hide" id="messages-list">
+              <div class="text-center text-gray-600 text-sm mt-10 font-mono">Awaiting transmissions...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 2: User Ops -->
+        <div class="lg:col-span-2 glass p-6 rounded-2xl flex flex-col max-h-[calc(100vh-160px)]">
+          <h2 class="text-sm font-bold text-gold-400 mb-4 border-b border-gold-900/50 pb-3 uppercase tracking-[0.15em] flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            User Registry
+          </h2>
+          <div class="overflow-x-auto overflow-y-auto flex-1 rounded-xl border border-white/5 bg-black/20">
+            <table class="w-full text-left border-collapse whitespace-nowrap">
+              <thead class="bg-black/40 backdrop-blur-md sticky top-0 z-10">
+                <tr class="text-gold-500/70 text-[10px] sm:text-xs uppercase tracking-widest">
+                  <th class="p-4 font-semibold rounded-tl-xl">Identity</th>
+                  <th class="p-4 font-semibold">Email</th>
+                  <th class="p-4 font-semibold">Role</th>
+                  <th class="p-4 font-semibold">Status</th>
+                  <th class="p-4 font-semibold text-right rounded-tr-xl">Action</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody" class="text-sm divide-y divide-white/5">
+                <tr><td colspan="5" class="p-8 text-center text-gray-600 font-mono">No users found...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- FIREBASE LOGIC VIA CDN MODULES -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
+    import { getFirestore, initializeFirestore, doc, onSnapshot, setDoc, updateDoc, collection, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+
+    // Valid Firebase Project Config using provided data
+    const firebaseConfig = {
+      apiKey: "AIzaSyCj7B-ptyfGLsd3p_ybhLWHbUlMOUhhkSI",
+      authDomain: "maya-admin-864ef.firebaseapp.com",
+      projectId: "maya-admin-864ef",
+      storageBucket: "maya-admin-864ef.firebasestorage.app",
+      messagingSenderId: "95577276281",
+      appId: "1:95577276281:web:b40e4e38988fb9a9b7b9a8"
+    };
+
+    // Initialization
+    const app = initializeApp(firebaseConfig);
+    // CRITICAL: Force Long Polling to prevent connectivity issues
+    const db = initializeFirestore(app, { experimentalForceLongPolling: true });
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    // Protection configuration
+    const ALLOWED_EMAIL = "mohdalikhan990x@gmail.com";
+
+    // DOM Attachments
+    const ui = {
+      loading: document.getElementById('loading'),
+      login: document.getElementById('login-screen'),
+      dashboard: document.getElementById('dashboard-screen'),
+      loginBtn: document.getElementById('login-btn'),
+      logoutBtn: document.getElementById('logout-btn'),
+      error: document.getElementById('login-error'),
+      emailDisplay: document.getElementById('user-email-display'),
+      maintenanceToggle: document.getElementById('maintenance-toggle'),
+      messagesList: document.getElementById('messages-list'),
+      usersTable: document.getElementById('users-tbody')
+    };
+
+    let unsubs = { maintenance: null, messages: null, users: null };
+
+    // --- AUTHENTICATION PIPELINE ---
+    onAuthStateChanged(auth, (user) => {
+      ui.loading.classList.add('hidden');
+      if (user) {
+        if (user.email === ALLOWED_EMAIL) {
+          ui.login.classList.add('hidden');
+          ui.dashboard.classList.remove('hidden');
+          ui.dashboard.classList.add('flex');
+          ui.emailDisplay.textContent = user.email;
+          mountDashboard();
+        } else {
+          showError(`Access Denied: Unrecognized clearance code (${user.email})`);
+          signOut(auth);
+        }
+      } else {
+        ui.login.classList.remove('hidden');
+        ui.dashboard.classList.add('hidden');
+        ui.dashboard.classList.remove('flex');
+        unmountDashboard();
+      }
+    });
+
+    ui.loginBtn.addEventListener('click', async () => {
+      try {
+        ui.error.classList.add('hidden');
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        showError(err.message);
+      }
+    });
+
+    ui.logoutBtn.addEventListener('click', () => signOut(auth));
+
+    function showError(msg) {
+      ui.error.textContent = msg;
+      ui.error.classList.remove('hidden');
+    }
+
+    // --- DASHBOARD REAL-TIME MOUNTING ---
+    function mountDashboard() {
+      // 1. Maintenance Mode
+      const globalConfigRef = doc(db, 'settings', 'global');
+      unsubs.maintenance = onSnapshot(globalConfigRef, (docSnap) => {
+        if (docSnap.exists()) {
+          ui.maintenanceToggle.checked = docSnap.data().isMaintenance || false;
+        } else {
+           setDoc(globalConfigRef, { isMaintenance: false }, { merge: true });
+        }
+      });
+
+      ui.maintenanceToggle.addEventListener('change', async (e) => {
+        try {
+          await setDoc(globalConfigRef, { isMaintenance: e.target.checked }, { merge: true });
+        } catch (error) {
+          console.error("Transmission failed", error);
+        }
+      });
+
+      // 2. Chat Log (Messages)
+      const msgQuery = query(collection(db, 'messages'), orderBy('timestamp', 'desc'), limit(10));
+      unsubs.messages = onSnapshot(msgQuery, (snapshot) => {
+        ui.messagesList.innerHTML = '';
+        if (snapshot.empty) {
+          ui.messagesList.innerHTML = '<div class="text-gray-600 font-mono text-sm mt-4 text-center">Radio silence...</div>';
+          return;
+        }
+        let html = '';
+        snapshot.forEach(docNode => {
+          const data = docNode.data();
+          const sender = data.sender || 'Unknown';
+          const text = data.text || '';
+          const isMaya = sender.toLowerCase() === 'maya';
+          const badgeStyle = isMaya 
+            ? 'bg-gold-500/20 text-gold-400 border-gold-500/30' 
+            : 'bg-white/5 text-gray-300 border-white/10';
+          
+          html += `
+            <div class="p-3 bg-black/40 rounded-xl border border-white/5 flex flex-col gap-1.5 hover:bg-black/60">
+              <span class="text-[9px] uppercase font-bold tracking-widest px-2 py-[2px] rounded border inline-block w-max ${badgeStyle}">
+                ${sender}
+              </span>
+              <p class="text-sm text-gray-200 pl-1">${escapeHtml(text)}</p>
+            </div>
+          `;
+        });
+        ui.messagesList.innerHTML = html;
+      });
+
+      // 3. User Table
+      unsubs.users = onSnapshot(collection(db, 'users'), (snapshot) => {
+        if (snapshot.empty) {
+          ui.usersTable.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-gray-600 font-mono">No users.</td></tr>';
+          return;
+        }
+        let html = '';
+        snapshot.forEach(docSnap => {
+          const usr = docSnap.data();
+          const uid = docSnap.id;
+          const status = usr.status || 'Active';
+          const isBlocked = status.toLowerCase() === 'blocked';
+          
+          const statusBadge = isBlocked 
+            ? '<span class="px-2.5 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-md text-[10px] uppercase font-bold">Blocked</span>'
+            : '<span class="px-2.5 py-1 bg-green-500/10 text-green-500 border border-green-500/20 rounded-md text-[10px] uppercase font-bold">Active</span>';
+            
+          html += `
+            <tr class="hover:bg-white/5 transition-colors group border-b border-white/5 last:border-0">
+              <td class="p-4 font-medium text-gray-200">${escapeHtml(usr.name || usr.displayName || 'Anonymous')}</td>
+              <td class="p-4 text-gray-500 text-sm">${escapeHtml(usr.email || 'N/A')}</td>
+              <td class="p-4 text-gold-500/70 font-mono text-xs">${escapeHtml(usr.role || 'user')}</td>
+              <td class="p-4">${statusBadge}</td>
+              <td class="p-4 text-right">
+                <button onclick="window.triggerClearance('${uid}', ${isBlocked})" 
+                  class="px-4 py-2 ${isBlocked ? 'bg-green-600/20 text-green-400 border-green-500/30 hover:bg-green-600 hover:text-white' : 'bg-red-600/20 text-red-400 border-red-500/30 hover:bg-red-600 hover:text-white'} border rounded-lg text-[10px] uppercase font-bold transition-all">
+                  ${isBlocked ? 'Restore' : 'Revoke'}
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+        ui.usersTable.innerHTML = html;
+      });
+    }
+
+    // Status toggler
+    window.triggerClearance = async (uid, currentlyBlocked) => {
+      const action = currentlyBlocked ? 'restore access for' : 'revoke access from';
+      if(!confirm(`SYSTEM OVERRIDE: Proceed to ${action} this entity?`)) return;
+      try {
+        await updateDoc(doc(db, 'users', uid), { status: currentlyBlocked ? 'Active' : 'Blocked' });
+      } catch (err) {
+        alert("Authorization failed: " + err.message);
+      }
+    };
+
+    function unmountDashboard() {
+      if(unsubs.maintenance) unsubs.maintenance();
+      if(unsubs.messages) unsubs.messages();
+      if(unsubs.users) unsubs.users();
+    }
+
+    function escapeHtml(unsafe) {
+      if(!unsafe) return '';
+      return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  </script>
+</body>
+</html>

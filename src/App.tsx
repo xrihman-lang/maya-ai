@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, LogOut, Shield } from "lucide-react";
+import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, AlertTriangle, Shield, Info, X, Settings } from "lucide-react";
 import { getMayaResponse, getMayaAudio, resetMayaSession } from "./services/geminiService";
 import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
 import Visualizer from "./components/Visualizer";
-import PermissionModal from "./components/PermissionModal";
-import Login from "./components/Login";
-import AdminDashboard from "./components/AdminDashboard";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
-import { auth, db, logOut } from "./firebase";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { collection, doc, onSnapshot, setDoc, getDoc, query, orderBy, addDoc, deleteDoc, getDocs } from "firebase/firestore";
+import { db } from "./firebase";
+import { doc, onSnapshot } from "firebase/firestore";
+import AdminPanel from "./components/AdminPanel";
 
 type AppState = "idle" | "listening" | "processing" | "speaking";
 
@@ -26,6 +23,7 @@ interface SystemSettings {
   isMaintenance: boolean;
   appVersion: string;
   emergencyMessage: string;
+  systemPrompt?: string;
 }
 
 interface BroadcastData {
@@ -41,15 +39,12 @@ declare global {
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isAuthReady, setIsAuthReady] = useState(false);
   const [appState, setAppState] = useState<AppState>("idle");
-  const [showAdminRoute, setShowAdminRoute] = useState(false);
   const [firebaseOfflineError, setFirebaseOfflineError] = useState(false);
   const [sysSettings, setSysSettings] = useState<SystemSettings | null>(null);
   const [broadcast, setBroadcast] = useState<BroadcastData | null>(null);
   const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState<number>(0);
+  const [currentHash, setCurrentHash] = useState(window.location.hash);
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
@@ -73,48 +68,31 @@ export default function App() {
     }
   }, [messages]);
 
-  // Auth Listener
+  // Hash Listener for Admin route
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        try {
-          const userRef = doc(db, "users", currentUser.uid);
-          const userSnap = await getDoc(userRef);
-          let role = currentUser.email === "mohdalikhan990x@gmail.com" ? "admin" : "user";
-          if (!userSnap.exists()) {
-            await setDoc(userRef, {
-              email: currentUser.email,
-              name: currentUser.displayName || "User",
-              role: role,
-              createdAt: new Date().toISOString()
-            });
-          } else {
-            role = userSnap.data().role;
-          }
-          setIsAdmin(role === "admin");
-        } catch (err: any) {
-          console.error("Error initializing user document:", err);
-          if (err.message && err.message.includes("client is offline")) {
-            setFirebaseOfflineError(true);
-          }
-          setIsAdmin(currentUser.email === "mohdalikhan990x@gmail.com"); 
-        }
-      } else {
-        setIsAdmin(false);
-      }
-      setIsAuthReady(true);
-    });
-    return () => unsubscribe();
+    const onHashChange = () => setCurrentHash(window.location.hash);
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
   // System Settings Header Listener
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "settings", "global_config"), (docSnap) => {
+    let currentSettings: Partial<SystemSettings> = { isMaintenance: false, appVersion: "1.0.0", emergencyMessage: "", systemPrompt: "" };
+
+    const unsubGlobal = onSnapshot(doc(db, "settings", "global_config"), (docSnap) => {
       if (docSnap.exists()) {
-        setSysSettings(docSnap.data() as SystemSettings);
+        currentSettings = { ...currentSettings, ...docSnap.data() };
+        setSysSettings(currentSettings as SystemSettings);
       } else {
-        setSysSettings({ isMaintenance: false, appVersion: "1.0.0", emergencyMessage: "" });
+        setSysSettings({ isMaintenance: false, appVersion: "1.0.0", emergencyMessage: "" } as SystemSettings);
+      }
+    });
+
+    const unsubMaya = onSnapshot(doc(db, "settings", "maya_config"), (docSnap) => {
+      if (docSnap.exists()) {
+        currentSettings = { ...currentSettings, systemPrompt: docSnap.data().systemPrompt };
+        setSysSettings(currentSettings as SystemSettings);
+        resetMayaSession(); 
       }
     });
 
@@ -130,63 +108,26 @@ export default function App() {
     });
 
     return () => {
-      unsub();
+      unsubGlobal();
+      unsubMaya();
       unsubBroadcast();
     };
   }, []);
 
-  // Firestore Messages Listener
-  useEffect(() => {
-    if (!user) {
-      setMessages([]);
-      return;
-    }
-    
-    const messagesRef = collection(db, "users", user.uid, "messages");
-    const q = query(messagesRef, orderBy("timestamp", "asc"));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedMessages: ChatMessage[] = [];
-      snapshot.forEach((doc) => {
-        fetchedMessages.push({ id: doc.id, ...doc.data() } as ChatMessage);
-      });
-      setMessages(fetchedMessages);
-    }, (error) => {
-      console.error("Firestore Error: ", error);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
-
-  useEffect(() => {
-    messagesRef.current = messages;
-  }, [messages]);
-
   const saveMessageToFirestore = async (msg: Omit<ChatMessage, "id">) => {
-    if (!user) return;
-    try {
-      await addDoc(collection(db, "users", user.uid, "messages"), {
-        ...msg,
-        timestamp: Date.now()
-      });
-    } catch (e) {
-      console.error("Error saving message", e);
-    }
+    const newMsg: ChatMessage = {
+      ...msg,
+      id: Math.random().toString(36).substring(7),
+      timestamp: Date.now()
+    };
+    setMessages(prev => [...prev, newMsg]);
   };
 
   const clearHistory = async () => {
-    if (!user) return;
     if (confirm("Are you sure you want to clear the chat history?")) {
-      try {
-        const messagesRef = collection(db, "users", user.uid, "messages");
-        const snapshot = await getDocs(messagesRef);
-        const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-        await Promise.all(deletePromises);
-        setMessages([]);
-        resetMayaSession();
-      } catch (e) {
-        console.error("Error clearing history", e);
-      }
+      setMessages([]);
+      localStorage.removeItem("maya_chat_history");
+      resetMayaSession();
     }
   };
 
@@ -202,6 +143,8 @@ export default function App() {
   const [textInput, setTextInput] = useState("");
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [isSessionActive, setIsSessionActive] = useState(false);
+  const [showAboutDialog, setShowAboutDialog] = useState(false);
+  const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
 
   const liveSessionRef = useRef<LiveSessionManager | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -256,7 +199,7 @@ export default function App() {
       }, 1500);
     } else {
       // 2. General Chit-Chat via Gemini
-      responseText = await getMayaResponse(finalTranscript, messagesRef.current, user?.displayName || "User");
+      responseText = await getMayaResponse(finalTranscript, messagesRef.current, "User", sysSettings?.systemPrompt);
       await saveMessageToFirestore({ sender: "maya", text: responseText });
       
       if (!isMuted) {
@@ -268,7 +211,7 @@ export default function App() {
       }
       setAppState("idle");
     }
-  }, [isMuted, isSessionActive, user]);
+  }, [isMuted, isSessionActive]);
 
   useEffect(() => {
     return () => {
@@ -292,7 +235,7 @@ export default function App() {
         setIsSessionActive(true);
         resetMayaSession();
         
-        const session = new LiveSessionManager(user?.displayName || "User");
+        const session = new LiveSessionManager("User");
         session.isMuted = isMuted;
         liveSessionRef.current = session;
         
@@ -313,7 +256,6 @@ export default function App() {
         await session.start();
       } catch (e) {
         console.error("Failed to start session", e);
-        setShowPermissionModal(true);
         setIsSessionActive(false);
         setAppState("idle");
       }
@@ -329,8 +271,9 @@ export default function App() {
     setShowTextInput(false);
   };
 
-  if (!isAuthReady) {
-    return <div className="h-[100dvh] w-screen bg-[#050505] flex items-center justify-center"><Loader2 className="animate-spin text-red-500" size={32} /></div>;
+  // Check if accessing admin panel
+  if (currentHash === "#admin") {
+    return <AdminPanel onExit={() => window.location.hash = ""} />;
   }
 
   // Handle Missing Firebase Database
@@ -346,9 +289,9 @@ export default function App() {
           <ul className="text-red-400 text-sm text-left list-decimal list-inside space-y-2">
             <li>Go to <a href="https://console.firebase.google.com/" target="_blank" className="text-red-300 underline">Firebase Console</a></li>
             <li>Select your project <b>gen-lang-client-0122088221</b></li>
-            <li>Click <b>Build</b> → <b>Firestore Database</b></li>
-            <li>Click <b>Create Database</b></li>
-            <li>Select <b>Start in production mode</b></li>
+            <li>Ensure <b>Firestore Database</b> (not Datastore) is created using 'Start in production mode'.</li>
+            <li>Make sure your API Key (`AIzaSyD8LP80vLAa...`) in Google Cloud has no domain restrictions blocking `firestore.googleapis.com`.</li>
+            <li>Or check if your ad-blocker or proxy is blocking Firestore connections.</li>
           </ul>
         </div>
         <button onClick={() => window.location.reload()} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-full transition-colors font-medium">
@@ -359,7 +302,7 @@ export default function App() {
   }
 
   // Handle Maintenance Mode
-  if ((sysSettings?.isMaintenance || sysSettings?.isUpdating) && !isAdmin) {
+  if (sysSettings?.isMaintenance || sysSettings?.isUpdating) {
     return (
       <div className="h-[100dvh] w-screen bg-[#050505] text-white flex flex-col items-center justify-center font-sans">
         <Shield className="text-red-500 mb-6" size={64} />
@@ -367,19 +310,8 @@ export default function App() {
         <p className="text-white/60 mb-8 max-w-md text-center">
           Maya is currently under maintenance for version {sysSettings?.appVersion || "1.0.0"}. Please check back later.
         </p>
-        <button onClick={logOut} className="px-6 py-3 bg-red-900/30 border border-red-900 hover:bg-red-900/50 rounded-full transition-colors">
-          Logout
-        </button>
       </div>
     );
-  }
-
-  if (showAdminRoute) {
-    return <AdminDashboard onExit={() => setShowAdminRoute(false)} />;
-  }
-
-  if (!user) {
-    return <Login />;
   }
 
   return (
@@ -427,12 +359,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {showPermissionModal && (
-        <PermissionModal 
-          onClose={() => setShowPermissionModal(false)} 
-        />
-      )}
-
       {/* Anime Background */}
       <div 
         className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
@@ -440,6 +366,83 @@ export default function App() {
       />
       {/* Dark Gradient Overlay for readability */}
       <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-[#050505]/95 via-[#050505]/40 to-[#050505]/95 pointer-events-none" />
+
+      {/* About/How to use Dialog */}
+      <AnimatePresence>
+        {showAboutDialog && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-sans">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#0a0a0a] border border-white/10 p-6 md:p-8 rounded-2xl max-w-lg w-full text-white shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setShowAboutDialog(false)}
+                className="absolute top-4 right-4 p-2 text-white/50 hover:text-white rounded-full hover:bg-white/5 transition-colors"
+                title="Close"
+              >
+                <X size={20} />
+              </button>
+              <h2 className="text-2xl font-bold mb-4 text-red-500">About Maya AI</h2>
+              <div className="space-y-4 text-white/80 text-sm md:text-base leading-relaxed">
+                <p>Maya AI ek advanced personal assistant hai jo aapke sawalon ka jawab dene aur tasks asan karne ke liye design ki gayi hai.</p>
+                <h3 className="text-lg font-semibold text-white mt-4 border-b border-white/10 pb-2">Kaise Use Karein?</h3>
+                <ul className="list-disc pl-5 space-y-3">
+                  <li><strong className="text-white">Voice Mode:</strong> "Start Session" dabayein aur bolna shuru karein. Maya aapki aawaz sunkar automatically jawab degi.</li>
+                  <li><strong className="text-white">Text Mode:</strong> Keyboard icon par click karein aur apna message type karke bhejenge to Maya bol kar jawab degi.</li>
+                  <li><strong className="text-white">Browser Actions:</strong> Aap Maya ko web pages open karne (e.g., "Open YouTube") ya themes change karne bol sakte hain.</li>
+                  <li><strong className="text-white">Clear History:</strong> Delete icon (trash) daba kar aap purani chat bhoolne ko keh sakte hain.</li>
+                </ul>
+              </div>
+              <div className="mt-8 flex justify-end">
+                <button
+                  onClick={() => setShowAboutDialog(false)}
+                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-medium transition-colors border border-red-500/50"
+                >
+                  Super! Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Privacy Policy Dialog */}
+      <AnimatePresence>
+        {showPrivacyDialog && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-sans">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#0a0a0a] border border-white/10 p-6 md:p-8 rounded-2xl max-w-lg w-full text-white shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setShowPrivacyDialog(false)}
+                className="absolute top-4 right-4 p-2 text-white/50 hover:text-white rounded-full hover:bg-white/5 transition-colors"
+                title="Close"
+              >
+                <X size={20} />
+              </button>
+              <h2 className="text-2xl font-bold mb-4 text-red-500">Privacy Policy</h2>
+              <div className="space-y-4 text-white/80 text-sm md:text-base leading-relaxed">
+                <p>Maya AI par hum aapki privacy ka samman karte hain. Hum aapka koi bhi personal data bina ijazat ke save nahi karte.</p>
+                <p>Hamari site par Google AdSense ke ads dikhaye jate hain jo cookies ka istemal karte hain taaki aapko behtar ads dikhaye ja sakein.</p>
+                <p>Aapki voice recording aur chat history sirf aapke personal browser storage aur app functionality ke liye istemal hoti hai, and servers par permanently store nahi ki jaati hai (jab tak specify na ho).</p>
+              </div>
+              <div className="mt-8 flex justify-end">
+                <button
+                  onClick={() => setShowPrivacyDialog(false)}
+                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-medium transition-colors border border-red-500/50"
+                >
+                  Got it
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Header */}
       <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-6 py-4 md:px-12 md:py-6">
@@ -450,15 +453,27 @@ export default function App() {
           <h1 className="text-xl font-serif font-medium tracking-wide opacity-90">Maya</h1>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && (
-            <button
-              onClick={() => setShowAdminRoute(true)}
-              className="p-2 rounded-full bg-red-950/50 hover:bg-red-900 border border-red-900/50 transition-colors"
-              title="Admin Panel"
-            >
-              <Shield size={18} className="text-red-400" />
-            </button>
-          )}
+          <button
+            onClick={() => window.location.hash = "#admin"}
+            className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
+            title="Admin Panel"
+          >
+            <Settings size={18} className="opacity-70" />
+          </button>
+          <button
+            onClick={() => setShowPrivacyDialog(true)}
+            className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
+            title="Privacy Policy"
+          >
+            <Shield size={18} className="opacity-70" />
+          </button>
+          <button
+            onClick={() => setShowAboutDialog(true)}
+            className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
+            title="How to use Maya"
+          >
+            <Info size={18} className="opacity-70" />
+          </button>
           {messages.length > 0 && (
             <button
               onClick={clearHistory}
@@ -478,13 +493,6 @@ export default function App() {
             ) : (
               <Volume2 size={18} className="opacity-70" />
             )}
-          </button>
-          <button
-            onClick={logOut}
-            className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10 ml-2"
-            title="Log Out"
-          >
-            <LogOut size={18} className="opacity-70" />
           </button>
         </div>
       </header>
