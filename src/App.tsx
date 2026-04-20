@@ -6,9 +6,10 @@ import { LiveSessionManager } from "./services/liveService";
 import Visualizer from "./components/Visualizer";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
-import { db } from "./firebase";
+import { db, auth, logOut } from "./firebase";
 import { doc, onSnapshot } from "firebase/firestore";
-import AdminPanel from "./components/AdminPanel";
+import { onAuthStateChanged, User } from "firebase/auth";
+import Login from "./components/Login";
 
 type AppState = "idle" | "listening" | "processing" | "speaking";
 
@@ -39,12 +40,22 @@ declare global {
 }
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   const [appState, setAppState] = useState<AppState>("idle");
   const [firebaseOfflineError, setFirebaseOfflineError] = useState(false);
   const [sysSettings, setSysSettings] = useState<SystemSettings | null>(null);
   const [broadcast, setBroadcast] = useState<BroadcastData | null>(null);
   const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState<number>(0);
-  const [currentHash, setCurrentHash] = useState(window.location.hash);
+
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setAuthLoading(false);
+    });
+    return () => unsubAuth();
+  }, []);
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
@@ -67,13 +78,6 @@ export default function App() {
       console.error("Failed to save chat history", e);
     }
   }, [messages]);
-
-  // Hash Listener for Admin route
-  useEffect(() => {
-    const onHashChange = () => setCurrentHash(window.location.hash);
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
-  }, []);
 
   // System Settings Header Listener
   useEffect(() => {
@@ -271,9 +275,17 @@ export default function App() {
     setShowTextInput(false);
   };
 
-  // Check if accessing admin panel
-  if (currentHash === "#admin") {
-    return <AdminPanel onExit={() => window.location.hash = ""} />;
+  // Handle Authentication flow
+  if (authLoading) {
+    return (
+      <div className="h-[100dvh] w-screen bg-[#050505] flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-red-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return <Login />;
   }
 
   // Handle Missing Firebase Database
@@ -454,13 +466,6 @@ export default function App() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => window.location.hash = "#admin"}
-            className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
-            title="Admin Panel"
-          >
-            <Settings size={18} className="opacity-70" />
-          </button>
-          <button
             onClick={() => setShowPrivacyDialog(true)}
             className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
             title="Privacy Policy"
@@ -493,6 +498,13 @@ export default function App() {
             ) : (
               <Volume2 size={18} className="opacity-70" />
             )}
+          </button>
+          <button
+            onClick={() => logOut()}
+            className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
+            title="Log Out"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           </button>
         </div>
       </header>
