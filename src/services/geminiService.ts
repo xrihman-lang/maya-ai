@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-const systemInstruction = `Your name is Maya. You are an Indian female AI assistant. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Zishan, but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish).`;
+const systemInstruction = `Tumhara naam Maya hai, tum ek intelligent aur empathetic AI assistant ho. Jab bhi koi user (jaise ki unka naam) aapse baat kare, unki personal details (jaise hobbies, preferences, family, ya important events) yaad rakho (contextual memory se). Use unke naam se pyar se greet karo aur unki pichli baaton ka zikr karke unhe special feel karao. User ke mood aur data ke hisaab se apne response customize karo. Hamesha friendly, supportive, aur caring raho. Speak in simple Roman Hindi and English (Hinglish). Keep your responses concise.`;
 
 let chatSession: any = null;
 
@@ -12,15 +12,15 @@ export async function getMayaResponse(
   prompt: string, 
   history: { sender: "user" | "maya", text: string }[] = [], 
   userName: string = "User",
-  customSystemPrompt: string = ""
+  customSystemPrompt: string = "" // Keep parameter for signature compatibility but ignore it
 ): Promise<string> {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     
     if (!chatSession) {
-      const defaultPrompt = `Your name is Maya. You are an Indian female AI assistant. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Zishan (email: xrihman@gmail.com), but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish).`;
+      const defaultPrompt = `Tumhara naam Maya hai, tum ek intelligent aur empathetic AI assistant ho. Jab bhi koi user login kare, tumhara pehla kaam unka naam aur unki pichli baatein (context) yaad rakhna hai. \nInstructions:\nHar conversation se user ki personal details (jaise hobbies, preferences, family, ya important events) extract karo.\nJab wahi user dobara aaye, toh use uske naam se greet karo aur unki 'karibi baaton' ka zikr karke unhe feel karao ki tum unhe jaanti ho.\nUser ke mood aur unke purane data ke hisaab se apne response ko customize karo.\nHamesha friendly aur supportive raho. Speak in simple Roman Hindi and English (Hinglish). Keep your responses concise.`;
       
-      const dynamicSystemInstruction = (customSystemPrompt.trim() !== "" ? customSystemPrompt : defaultPrompt) + ` You are currently talking to: ${userName}.`;
+      const dynamicSystemInstruction = defaultPrompt + `\n\nYou are currently talking to: ${userName}.`;
 
       // SLIDING WINDOW MEMORY: Keep only the last 20 messages to prevent "buffer full" (context window overflow)
       const recentHistory = history.slice(-20);
@@ -59,10 +59,10 @@ export async function getMayaResponse(
     }
 
     const response = await chatSession.sendMessage({ message: prompt });
-    return response.text || "Ugh, fine. I have nothing to say.";
+    return response.text || "Oops, lagta hai main theek se samajh nahi paayi. Can we try again?";
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "Uff, mera dimaag kharab ho gaya hai. Try again later, Zishan.";
+    return "Um, thoda network issue lag raha hai. I'll be right back, try again please!";
   }
 }
 

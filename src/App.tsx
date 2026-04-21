@@ -7,7 +7,7 @@ import Visualizer from "./components/Visualizer";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
 import { db, auth, logOut } from "./firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, collection, addDoc } from "firebase/firestore";
 import { onAuthStateChanged, User } from "firebase/auth";
 import Login from "./components/Login";
 
@@ -124,7 +124,21 @@ export default function App() {
       id: Math.random().toString(36).substring(7),
       timestamp: Date.now()
     };
+    
+    // Update local UI immediately
     setMessages(prev => [...prev, newMsg]);
+
+    // Push to Firestore so the Live Logs on Admin Panel can see it
+    try {
+      await addDoc(collection(db, "messages"), {
+        sender: newMsg.sender,
+        text: newMsg.text,
+        timestamp: newMsg.timestamp,
+        userId: currentUser?.uid || "anonymous"
+      });
+    } catch (e) {
+      console.error("Failed to sync message to Firestore live logs:", e);
+    }
   };
 
   const clearHistory = async () => {
@@ -531,9 +545,31 @@ export default function App() {
           </div>
         </div>
 
-        {/* Center Visualizer (Fixed Full Screen Background) */}
+        {/* Center Visualizer & Status Area */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-          <Visualizer state={appState} />
+          {/* <Visualizer state={appState} /> */ /* Visualizer disabled per user request */}
+          
+          <div className="absolute top-[25%] left-1/2 -translate-x-1/2 w-full flex justify-center z-10 pointer-events-auto">
+            <div className="maya-main-container">
+              <div className="maya-avatar-wrapper">
+                <div className="maya-pulse-ring"></div>
+                <div className="maya-pulse-ring delay-1"></div>
+                
+                <img 
+                  src="https://i.postimg.cc/ZnRXSx4Z/Adobe-Express-file.png" 
+                  alt="Maya AI" 
+                  className="maya-transparent-img"
+                />
+              </div>
+
+              <div className="maya-info">
+                <div className="maya-glitch-text" data-text="MAYA_SYSTEM_v2.0">MAYA_SYSTEM_v2.0</div>
+                <div className="maya-status-bar">
+                  <span className="blinking-dot"></span> SECURE CONNECTION ACTIVE
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Right Column: User Status */}
