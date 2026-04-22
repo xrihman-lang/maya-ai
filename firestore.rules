@@ -87,6 +87,10 @@ service cloud.firestore {
       allow read: if true; 
       allow write: if request.auth != null && request.auth.token.email == "mohdalikhan990x@gmail.com" && isValidSystemSettings(request.resource.data);
     }
+
+    match /user_memory/{userId} {
+      allow read, write: if isOwner(userId);
+    }
     
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();

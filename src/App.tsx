@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, AlertTriangle, Shield, Info, X, Settings } from "lucide-react";
-import { getMayaResponse, getMayaAudio, resetMayaSession } from "./services/geminiService";
+import { getMayaResponse, getMayaAudio, resetMayaSession, extractAndUpdateMemory } from "./services/geminiService";
 import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
 import Visualizer from "./components/Visualizer";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
 import { db, auth, logOut } from "./firebase";
-import { doc, onSnapshot, collection, addDoc } from "firebase/firestore";
+import { doc, onSnapshot, collection, addDoc, getDoc, setDoc } from "firebase/firestore";
 import { onAuthStateChanged, User } from "firebase/auth";
 import Login from "./components/Login";
 
@@ -42,6 +42,7 @@ declare global {
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [userMemory, setUserMemory] = useState<string>("");
 
   const [appState, setAppState] = useState<AppState>("idle");
   const [firebaseOfflineError, setFirebaseOfflineError] = useState(false);
@@ -50,11 +51,34 @@ export default function App() {
   const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState<number>(0);
 
   useEffect(() => {
+    let unsubMemory: (() => void) | undefined;
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
+      if (user) {
+        // Listen to User Memory
+        unsubMemory = onSnapshot(
+          doc(db, "user_memory", user.uid),
+          (memDoc) => {
+            if (memDoc.exists()) {
+              setUserMemory(memDoc.data().memory || "");
+            } else {
+              setUserMemory("");
+            }
+          },
+          (err) => {
+            console.error("Failed to load user memory", err);
+          }
+        );
+      } else {
+        if (unsubMemory) unsubMemory();
+        setUserMemory("");
+      }
       setAuthLoading(false);
     });
-    return () => unsubAuth();
+    return () => {
+      unsubAuth();
+      if (unsubMemory) unsubMemory();
+    };
   }, []);
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -129,15 +153,17 @@ export default function App() {
     setMessages(prev => [...prev, newMsg]);
 
     // Push to Firestore so the Live Logs on Admin Panel can see it
-    try {
-      await addDoc(collection(db, "messages"), {
-        sender: newMsg.sender,
-        text: newMsg.text,
-        timestamp: newMsg.timestamp,
-        userId: currentUser?.uid || "anonymous"
-      });
-    } catch (e) {
-      console.error("Failed to sync message to Firestore live logs:", e);
+    if (currentUser?.uid) {
+      try {
+        await addDoc(collection(db, "messages"), {
+          sender: newMsg.sender,
+          text: newMsg.text,
+          timestamp: newMsg.timestamp,
+          userId: currentUser.uid
+        });
+      } catch (e) {
+        // Silent catch for permission issues
+      }
     }
   };
 
@@ -217,9 +243,19 @@ export default function App() {
       }, 1500);
     } else {
       // 2. General Chit-Chat via Gemini
-      responseText = await getMayaResponse(finalTranscript, messagesRef.current, "User", sysSettings?.systemPrompt);
+      responseText = await getMayaResponse(finalTranscript, messagesRef.current, currentUser?.displayName || "User", sysSettings?.systemPrompt, userMemory);
       await saveMessageToFirestore({ sender: "maya", text: responseText });
       
+      // Update memory in background
+      if (currentUser?.uid) {
+        extractAndUpdateMemory(currentUser.displayName || "User", userMemory, finalTranscript, responseText).then(async (newMemory) => {
+          if (newMemory && newMemory !== userMemory) {
+            setUserMemory(newMemory);
+            await setDoc(doc(db, "user_memory", currentUser.uid), { memory: newMemory }, { merge: true });
+          }
+        });
+      }
+
       if (!isMuted) {
         setAppState("speaking");
         const audioBase64 = await getMayaAudio(responseText);
@@ -296,10 +332,6 @@ export default function App() {
         <Loader2 className="w-10 h-10 text-red-500 animate-spin" />
       </div>
     );
-  }
-
-  if (!currentUser) {
-    return <Login />;
   }
 
   // Handle Missing Firebase Database
@@ -513,13 +545,32 @@ export default function App() {
               <Volume2 size={18} className="opacity-70" />
             )}
           </button>
-          <button
-            onClick={() => logOut()}
-            className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
-            title="Log Out"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-          </button>
+          
+          {currentUser ? (
+            <button
+              onClick={() => logOut()}
+              className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
+              title="Log Out"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                import("./firebase").then(mod => {
+                  mod.signInWithGoogle().catch(err => {
+                    if (err.code !== 'auth/popup-closed-by-user') {
+                      console.error("Login failed", err);
+                    }
+                  });
+                });
+              }}
+              className="px-4 py-1.5 rounded-full bg-red-600/20 hover:bg-red-600/40 text-red-100 transition-colors border border-red-500/30 text-sm font-medium flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.3)]"
+              title="Log In to save memories"
+            >
+              Sign In
+            </button>
+          )}
         </div>
       </header>
 

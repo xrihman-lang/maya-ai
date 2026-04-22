@@ -15,8 +15,10 @@ export default function Login() {
     try {
       await signInWithGoogle();
     } catch (err: any) {
-      console.error('Google Login Error:', err);
-      setError(err.message || 'Authentication failed. Please try again.');
+      if (err.code !== 'auth/popup-closed-by-user') {
+        console.error('Google Login Error:', err);
+        setError(err.message || 'Authentication failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
