@@ -1,14 +1,12 @@
 import { initializeApp } from 'firebase/app';
-import { initializeFirestore } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-});
+export const db = getFirestore(app);
 
 export const signInWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
