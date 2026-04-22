@@ -7,9 +7,10 @@ import Visualizer from "./components/Visualizer";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
 import { db, auth, logOut } from "./firebase";
-import { doc, onSnapshot, collection, addDoc, getDoc, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, collection, addDoc, getDoc, setDoc, increment } from "firebase/firestore";
 import { onAuthStateChanged, User } from "firebase/auth";
 import Login from "./components/Login";
+import AdminPanel from "./components/AdminPanel";
 
 type AppState = "idle" | "listening" | "processing" | "speaking";
 
@@ -49,12 +50,21 @@ export default function App() {
   const [sysSettings, setSysSettings] = useState<SystemSettings | null>(null);
   const [broadcast, setBroadcast] = useState<BroadcastData | null>(null);
   const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState<number>(0);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
     let unsubMemory: (() => void) | undefined;
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       if (user) {
+        // Record the login
+        setDoc(doc(db, "user_logins", user.uid), {
+          email: user.email || "Unknown",
+          lastLogin: Date.now(),
+          loginCount: increment(1)
+        }, { merge: true }).catch(err => console.error("Tracking Error:", err));
+        
         // Listen to User Memory
         unsubMemory = onSnapshot(
           doc(db, "user_memory", user.uid),
@@ -502,6 +512,12 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {showAdminPanel && currentUser?.email === 'xrihman@gmail.com' && (
+          <AdminPanel onClose={() => setShowAdminPanel(false)} />
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-6 py-4 md:px-12 md:py-6">
         <div className="flex items-center gap-3">
@@ -546,6 +562,16 @@ export default function App() {
             )}
           </button>
           
+          {currentUser?.email === 'xrihman@gmail.com' && (
+            <button
+              onClick={() => setShowAdminPanel(true)}
+              className="p-2 rounded-full bg-red-600/20 hover:bg-red-500/40 text-red-100 transition-colors border border-red-500/30"
+              title="Admin Panel"
+            >
+              <Settings size={18} className="opacity-90" />
+            </button>
+          )}
+
           {currentUser ? (
             <button
               onClick={() => logOut()}
@@ -557,18 +583,23 @@ export default function App() {
           ) : (
             <button
               onClick={() => {
+                if (isLoggingIn) return;
+                setIsLoggingIn(true);
                 import("./firebase").then(mod => {
                   mod.signInWithGoogle().catch(err => {
-                    if (err.code !== 'auth/popup-closed-by-user') {
+                    if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
                       console.error("Login failed", err);
                     }
+                  }).finally(() => {
+                    setIsLoggingIn(false);
                   });
                 });
               }}
-              className="px-4 py-1.5 rounded-full bg-red-600/20 hover:bg-red-600/40 text-red-100 transition-colors border border-red-500/30 text-sm font-medium flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.3)]"
+              disabled={isLoggingIn}
+              className={`px-4 py-1.5 rounded-full ${isLoggingIn ? 'bg-red-900/50 cursor-not-allowed' : 'bg-red-600/20 hover:bg-red-600/40'} text-red-100 transition-colors border border-red-500/30 text-sm font-medium flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.3)]`}
               title="Log In to save memories"
             >
-              Sign In
+              {isLoggingIn ? 'Wait...' : 'Sign In'}
             </button>
           )}
         </div>

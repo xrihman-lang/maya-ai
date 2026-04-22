@@ -39,7 +39,8 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && (
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
-        (request.auth.token.email == "xrihman@gmail.com" && request.auth.token.email_verified == true)
+        (request.auth.token.email == "xrihman@gmail.com") ||
+        (request.auth.token.email == "mohdalikhan990x@gmail.com")
       );
     }
     
@@ -56,11 +57,8 @@ service cloud.firestore {
     }
     
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['email', 'name', 'role', 'createdAt']) &&
-             isValidEmail(data.email) &&
-             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-             data.role in ['user', 'admin'] &&
-             isValidDateString(data.createdAt);
+      return hasOnlyAllowedFields(['email', 'name', 'role', 'createdAt', 'lastLogin', 'loginCount']) &&
+             isValidEmail(data.email);
     }
     
     function isValidMessage(data) {
@@ -90,6 +88,11 @@ service cloud.firestore {
 
     match /user_memory/{userId} {
       allow read, write: if isOwner(userId);
+    }
+    
+    match /user_logins/{userId} {
+      allow read: if isAdmin();
+      allow write: if isOwner(userId);
     }
     
     match /users/{userId} {

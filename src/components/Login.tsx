@@ -15,7 +15,7 @@ export default function Login() {
     try {
       await signInWithGoogle();
     } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user') {
+      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
         console.error('Google Login Error:', err);
         setError(err.message || 'Authentication failed. Please try again.');
       }
