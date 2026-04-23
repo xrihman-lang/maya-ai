@@ -676,7 +676,7 @@ export default function App() {
       </main>
 
       {/* Controls */}
-      <footer className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-center pb-6 md:pb-8 z-20 shrink-0 gap-4">
+      <footer className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-center pb-12 md:pb-16 z-20 shrink-0 gap-6">
         <AnimatePresence>
           {showTextInput && (
             <motion.form 
@@ -684,59 +684,66 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               onSubmit={handleTextSubmit}
-              className="w-full max-w-md flex items-center gap-2 bg-white/5 border border-white/10 rounded-full p-1 pl-4 backdrop-blur-md shadow-2xl"
+              className="w-full max-w-md flex items-center gap-2 bg-black/40 border border-white/10 rounded-full p-1.5 pl-5 backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] mb-2"
             >
               <input 
                 type="text"
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 placeholder="Type a message to Maya..."
-                className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/30 text-sm"
+                className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/30 text-sm md:text-base font-medium"
                 autoFocus
               />
               <button 
                 type="submit"
                 disabled={!textInput.trim()}
-                className="p-2 rounded-full bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:hover:bg-red-600 transition-colors"
+                className="p-2.5 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:hover:bg-red-600 transition-all shadow-[0_0_15px_rgba(220,38,38,0.4)]"
               >
-                <Send size={16} />
+                <Send size={18} />
               </button>
             </motion.form>
           )}
         </AnimatePresence>
 
         <div className="flex items-center gap-4">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={toggleListening}
             className={`
-              group relative flex items-center gap-3 px-8 py-4 rounded-full font-medium tracking-wide transition-all duration-300 shadow-2xl
+              group relative flex items-center gap-4 px-10 py-5 rounded-full font-bold tracking-widest uppercase text-sm transition-all duration-500 overflow-hidden
               ${
                 isSessionActive
-                  ? "bg-red-600/20 text-red-400 border border-red-500/50 hover:bg-red-600/30"
-                  : "bg-black/60 text-red-100 border border-red-500/30 hover:bg-red-950/80 hover:border-red-500/80 hover:scale-105"
+                  ? "bg-red-600/10 text-red-500 border-2 border-red-500/30 shadow-[0_0_20px_rgba(220,38,38,0.2)]"
+                  : "bg-red-600/90 text-white border-2 border-red-500 shadow-[0_0_30px_rgba(220,38,38,0.4)] hover:shadow-[0_0_50px_rgba(220,38,38,0.6)]"
               }
             `}
           >
             {isSessionActive ? (
               <>
-                <MicOff size={20} />
-                <span>End Session</span>
+                <MicOff size={22} className="relative z-10" />
+                <span className="relative z-10">End Session</span>
               </>
             ) : (
               <>
-                <Mic size={20} className="group-hover:animate-bounce" />
-                <span>Start Session</span>
+                <Mic size={22} className="relative z-10 group-hover:scale-110 transition-transform" />
+                <span className="relative z-10">Start Session</span>
               </>
             )}
-          </button>
+            
+            {/* Pulsing effect for "Start" state */}
+            {!isSessionActive && (
+              <span className="absolute inset-0 rounded-full border-2 border-red-500 animate-ping opacity-20" />
+            )}
+          </motion.button>
           
           {!isSessionActive && (
             <button
               onClick={() => setShowTextInput(!showTextInput)}
-              className="p-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shadow-2xl"
+              className="p-5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all shadow-2xl group"
               title="Type instead"
             >
-              <Keyboard size={20} className="opacity-70" />
+              <Keyboard size={24} className="opacity-70 group-hover:opacity-100 transition-opacity" />
             </button>
           )}
         </div>

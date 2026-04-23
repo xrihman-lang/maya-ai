@@ -88,9 +88,10 @@ Agar koi aapse pooche ki "Zishan kaun hai", "Zishan kya karta hai", ya "Zishan k
       }
 
       chatSession = ai.chats.create({
-        model: "gemini-3.1-flash-lite-preview",
+        model: "gemini-3-flash-preview",
         config: {
           systemInstruction: dynamicSystemInstruction,
+          thinkingConfig: { includeThoughts: false }
         },
         history: formattedHistory,
       });
@@ -108,7 +109,7 @@ export async function getMayaAudio(text: string): Promise<string | null> {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
+      model: "gemini-3.1-flash-tts-preview",
       contents: [{ parts: [{ text }] }],
       config: {
         responseModalities: ["AUDIO"],
@@ -135,26 +136,16 @@ export async function extractAndUpdateMemory(
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     
-    const extractionPrompt = `You are a background memory processor for an AI assistant named Maya. 
-Your task is to update the long-term memory of the user silently.
-
-USER NAME: ${userName}
-CURRENT LONG-TERM MEMORY: ${currentMemory || "None"}
-
-NEW CHAT:
-User: ${userMessage}
-Maya: ${mayaResponse}
-
-INSTRUCTIONS:
-1. Identify any new personal information, preferences, mood, hobbies, facts, or important events from the "NEW CHAT".
-2. Merge this new information with the "CURRENT LONG-TERM MEMORY".
-3. Write the updated summary in English (kept brief and factual).
-4. If there is no new personal information, just return the exact CURRENT LONG-TERM MEMORY as it is.
-5. Do NOT include any introductory or concluding text (e.g., "Here is the summary:", "Updated Memory:"). Just return the raw summary text.`;
+    const extractionPrompt = `Update user memory for ${userName}. Merge new info. Return ONLY summary.
+    Memory: ${currentMemory}
+    Chat: ${userMessage} -> ${mayaResponse}`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite-preview",
       contents: [{ parts: [{ text: extractionPrompt }] }],
+      config: {
+        thinkingConfig: { includeThoughts: false }
+      }
     });
 
     const updatedMemory = response.text?.trim() || currentMemory;
