@@ -131,11 +131,16 @@ export class LiveSessionManager {
               this.onStateChange("listening");
             }
 
-            // Handle Transcriptions
-            const userText = message.serverContent?.modelTurn?.parts?.[0]?.text;
-            if (userText) {
-               // Output transcription
-               this.onMessage("maya", userText);
+            // Handle Maya's Text Response
+            const mayaText = message.serverContent?.modelTurn?.parts?.find(p => p.text)?.text;
+            if (mayaText) {
+               this.onMessage("maya", mayaText);
+            }
+
+            // Handle User Speech Transcription
+            const userTranscription = message.serverContent?.userContent?.parts?.find(p => p.text)?.text;
+            if (userTranscription) {
+               this.onMessage("user", userTranscription);
             }
 
             // Handle Function Calls

@@ -332,7 +332,6 @@ export default function App() {
     
     handleTextCommand(textInput);
     setTextInput("");
-    setShowTextInput(false);
   };
 
   // Handle Authentication flow
@@ -684,23 +683,26 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               onSubmit={handleTextSubmit}
-              className="w-full max-w-md flex items-center gap-2 bg-black/40 border border-white/10 rounded-full p-1.5 pl-5 backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] mb-2"
+              className="w-full max-w-md flex items-center gap-2 bg-black/60 border border-red-500/30 rounded-full p-2 pl-5 backdrop-blur-2xl shadow-[0_0_50px_rgba(220,38,38,0.3)] mb-4 z-[100]"
             >
               <input 
                 type="text"
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Type a message to Maya..."
-                className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/30 text-sm md:text-base font-medium"
+                placeholder="Type your message..."
+                className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-red-100/30 text-sm md:text-base font-medium"
                 autoFocus
+                autoComplete="off"
               />
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 type="submit"
                 disabled={!textInput.trim()}
-                className="p-2.5 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:hover:bg-red-600 transition-all shadow-[0_0_15px_rgba(220,38,38,0.4)]"
+                className="p-3 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:hover:bg-red-600 transition-all shadow-[0_0_20px_rgba(220,38,38,0.5)]"
               >
-                <Send size={18} />
-              </button>
+                <Send size={20} />
+              </motion.button>
             </motion.form>
           )}
         </AnimatePresence>
@@ -737,15 +739,13 @@ export default function App() {
             )}
           </motion.button>
           
-          {!isSessionActive && (
-            <button
-              onClick={() => setShowTextInput(!showTextInput)}
-              className="p-5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all shadow-2xl group"
-              title="Type instead"
-            >
-              <Keyboard size={24} className="opacity-70 group-hover:opacity-100 transition-opacity" />
-            </button>
-          )}
+          <button
+            onClick={() => setShowTextInput(!showTextInput)}
+            className={`p-5 rounded-full border transition-all shadow-2xl group ${showTextInput ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+            title="Type a message"
+          >
+            <Keyboard size={24} className={showTextInput ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
+          </button>
         </div>
       </footer>
     </div>
