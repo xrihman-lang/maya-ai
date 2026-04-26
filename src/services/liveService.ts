@@ -15,7 +15,8 @@ export class LiveSessionManager {
   private nextPlayTime: number = 0;
   private isPlaying: boolean = false;
   public isMuted: boolean = false;
-  
+  private isConnected: boolean = false;
+
   public onStateChange: (state: "idle" | "listening" | "processing" | "speaking") => void = () => {};
   public onMessage: (sender: "user" | "maya", text: string) => void = () => {};
   public onCommand: (url: string) => void = () => {};
@@ -74,9 +75,11 @@ export class LiveSessionManager {
         const base64Data = btoa(binary);
 
         this.sessionPromise.then(session => {
-          session.sendRealtimeInput({
-            audio: { data: base64Data, mimeType: 'audio/pcm;rate=16000' }
-          });
+          if (this.isConnected) {
+            session.sendRealtimeInput({
+              audio: { data: base64Data, mimeType: 'audio/pcm;rate=16000' }
+            });
+          }
         }).catch(err => console.error("Error sending audio", err));
       };
 
@@ -115,6 +118,7 @@ export class LiveSessionManager {
         callbacks: {
           onopen: () => {
             console.log("Live API Connected");
+            this.isConnected = true;
             this.onStateChange("listening");
           },
           onmessage: async (message: LiveServerMessage) => {
@@ -180,10 +184,12 @@ export class LiveSessionManager {
           },
           onclose: () => {
             console.log("Live API Closed");
+            this.isConnected = false;
             this.stop();
           },
           onerror: (err) => {
             console.error("Live API Error:", err);
+            this.isConnected = false;
             this.stop();
           }
         }
@@ -191,6 +197,7 @@ export class LiveSessionManager {
 
     } catch (error) {
       console.error("Failed to start Live Session:", error);
+      this.isConnected = false;
       this.stop();
     }
   }
@@ -247,6 +254,7 @@ export class LiveSessionManager {
   }
 
   stop() {
+    this.isConnected = false;
     if (this.processor) {
       this.processor.disconnect();
       this.processor = null;
@@ -274,7 +282,7 @@ export class LiveSessionManager {
   }
 
   sendText(text: string) {
-    if (this.sessionPromise) {
+    if (this.sessionPromise && this.isConnected) {
       this.sessionPromise.then(session => {
         session.sendRealtimeInput({ text });
       });
