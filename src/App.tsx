@@ -6,11 +6,6 @@ import { LiveSessionManager } from "./services/liveService";
 import Visualizer from "./components/Visualizer";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
-import { db, auth, logOut } from "./firebase";
-import { doc, onSnapshot, collection, addDoc, getDoc, setDoc, increment } from "firebase/firestore";
-import { onAuthStateChanged, User } from "firebase/auth";
-import Login from "./components/Login";
-import AdminPanel from "./components/AdminPanel";
 
 type AppState = "idle" | "listening" | "processing" | "speaking";
 
@@ -41,54 +36,20 @@ declare global {
 }
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [userMemory, setUserMemory] = useState<string>("");
 
   const [appState, setAppState] = useState<AppState>("idle");
-  const [firebaseOfflineError, setFirebaseOfflineError] = useState(false);
   const [sysSettings, setSysSettings] = useState<SystemSettings | null>(null);
   const [broadcast, setBroadcast] = useState<BroadcastData | null>(null);
   const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState<number>(0);
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // Removed Firebase Auth logic
   useEffect(() => {
-    let unsubMemory: (() => void) | undefined;
-    const unsubAuth = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      if (user) {
-        // Record the login
-        setDoc(doc(db, "user_logins", user.uid), {
-          email: user.email || "Unknown",
-          lastLogin: Date.now(),
-          loginCount: increment(1)
-        }, { merge: true }).catch(err => console.error("Tracking Error:", err));
-        
-        // Listen to User Memory
-        unsubMemory = onSnapshot(
-          doc(db, "user_memory", user.uid),
-          (memDoc) => {
-            if (memDoc.exists()) {
-              setUserMemory(memDoc.data().memory || "");
-            } else {
-              setUserMemory("");
-            }
-          },
-          (err) => {
-            console.error("Failed to load user memory", err);
-          }
-        );
-      } else {
-        if (unsubMemory) unsubMemory();
-        setUserMemory("");
-      }
-      setAuthLoading(false);
-    });
-    return () => {
-      unsubAuth();
-      if (unsubMemory) unsubMemory();
-    };
+    // Load local memory if any
+    const savedMemory = localStorage.getItem("maya_user_memory");
+    if (savedMemory) {
+      setUserMemory(savedMemory);
+    }
   }, []);
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -113,46 +74,12 @@ export default function App() {
     }
   }, [messages]);
 
-  // System Settings Header Listener
+  // Local settings only (removed Firestore listeners)
   useEffect(() => {
-    let currentSettings: Partial<SystemSettings> = { isMaintenance: false, appVersion: "1.0.0", emergencyMessage: "", systemPrompt: "" };
-
-    const unsubGlobal = onSnapshot(doc(db, "settings", "global_config"), (docSnap) => {
-      if (docSnap.exists()) {
-        currentSettings = { ...currentSettings, ...docSnap.data() };
-        setSysSettings(currentSettings as SystemSettings);
-      } else {
-        setSysSettings({ isMaintenance: false, appVersion: "1.0.0", emergencyMessage: "" } as SystemSettings);
-      }
-    });
-
-    const unsubMaya = onSnapshot(doc(db, "settings", "maya_config"), (docSnap) => {
-      if (docSnap.exists()) {
-        currentSettings = { ...currentSettings, systemPrompt: docSnap.data().systemPrompt };
-        setSysSettings(currentSettings as SystemSettings);
-        resetMayaSession(); 
-      }
-    });
-
-    // Global Broadcast Listener
-    const unsubBroadcast = onSnapshot(doc(db, "settings", "broadcast"), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setBroadcast({
-          message: data.message || "",
-          timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : (data.timestamp || 0)
-        });
-      }
-    });
-
-    return () => {
-      unsubGlobal();
-      unsubMaya();
-      unsubBroadcast();
-    };
+    setSysSettings({ isMaintenance: false, appVersion: "1.0.0", emergencyMessage: "" });
   }, []);
 
-  const saveMessageToFirestore = async (msg: Omit<ChatMessage, "id">) => {
+  const saveMessageLocal = async (msg: Omit<ChatMessage, "id">) => {
     const newMsg: ChatMessage = {
       ...msg,
       id: Math.random().toString(36).substring(7),
@@ -161,20 +88,6 @@ export default function App() {
     
     // Update local UI immediately
     setMessages(prev => [...prev, newMsg]);
-
-    // Push to Firestore so the Live Logs on Admin Panel can see it
-    if (currentUser?.uid) {
-      try {
-        await addDoc(collection(db, "messages"), {
-          sender: newMsg.sender,
-          text: newMsg.text,
-          timestamp: newMsg.timestamp,
-          userId: currentUser.uid
-        });
-      } catch (e) {
-        // Silent catch for permission issues
-      }
-    }
   };
 
   const clearHistory = async () => {
@@ -217,7 +130,7 @@ export default function App() {
       return;
     }
 
-    await saveMessageToFirestore({ sender: "user", text: finalTranscript });
+    await saveMessageLocal({ sender: "user", text: finalTranscript });
     
     // If live session is active, send text through it
     if (isSessionActive && liveSessionRef.current) {
@@ -234,7 +147,7 @@ export default function App() {
 
     if (commandResult.isBrowserAction) {
       responseText = commandResult.action;
-      await saveMessageToFirestore({ sender: "maya", text: responseText });
+      await saveMessageLocal({ sender: "maya", text: responseText });
       
       if (!isMuted) {
         setAppState("speaking");
@@ -253,18 +166,16 @@ export default function App() {
       }, 1500);
     } else {
       // 2. General Chit-Chat via Gemini
-      responseText = await getMayaResponse(finalTranscript, messagesRef.current, currentUser?.displayName || "User", sysSettings?.systemPrompt, userMemory);
-      await saveMessageToFirestore({ sender: "maya", text: responseText });
+      responseText = await getMayaResponse(finalTranscript, messagesRef.current, "User", sysSettings?.systemPrompt, userMemory);
+      await saveMessageLocal({ sender: "maya", text: responseText });
       
       // Update memory in background
-      if (currentUser?.uid) {
-        extractAndUpdateMemory(currentUser.displayName || "User", userMemory, finalTranscript, responseText).then(async (newMemory) => {
-          if (newMemory && newMemory !== userMemory) {
-            setUserMemory(newMemory);
-            await setDoc(doc(db, "user_memory", currentUser.uid), { memory: newMemory }, { merge: true });
-          }
-        });
-      }
+      extractAndUpdateMemory("User", userMemory, finalTranscript, responseText).then(async (newMemory) => {
+        if (newMemory && newMemory !== userMemory) {
+          setUserMemory(newMemory);
+          localStorage.setItem("maya_user_memory", newMemory);
+        }
+      });
 
       if (!isMuted) {
         setAppState("speaking");
@@ -308,7 +219,7 @@ export default function App() {
         };
         
         session.onMessage = (sender, text) => {
-          saveMessageToFirestore({ sender, text });
+          saveMessageLocal({ sender, text });
         };
         
         session.onCommand = (url) => {
@@ -333,40 +244,6 @@ export default function App() {
     handleTextCommand(textInput);
     setTextInput("");
   };
-
-  // Handle Authentication flow
-  if (authLoading) {
-    return (
-      <div className="h-[100dvh] w-screen bg-[#050505] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 text-red-500 animate-spin" />
-      </div>
-    );
-  }
-
-  // Handle Missing Firebase Database
-  if (firebaseOfflineError) {
-    return (
-      <div className="h-[100dvh] w-screen bg-[#050505] text-white flex flex-col items-center justify-center font-sans p-6 text-center">
-        <Shield className="text-red-500 mb-6 mx-auto" size={64} />
-        <h1 className="text-2xl md:text-3xl font-bold mb-4 text-red-50">Database Connection Failed</h1>
-        <div className="bg-red-950/30 border border-red-900 p-6 rounded-2xl max-w-lg mb-8 backdrop-blur-md">
-          <p className="text-red-200 mb-4 font-medium">
-            Firestore Database has not been created yet in your project.
-          </p>
-          <ul className="text-red-400 text-sm text-left list-decimal list-inside space-y-2">
-            <li>Go to <a href="https://console.firebase.google.com/" target="_blank" className="text-red-300 underline">Firebase Console</a></li>
-            <li>Select your project <b>gen-lang-client-0122088221</b></li>
-            <li>Ensure <b>Firestore Database</b> (not Datastore) is created using 'Start in production mode'.</li>
-            <li>Make sure your API Key (`AIzaSyD8LP80vLAa...`) in Google Cloud has no domain restrictions blocking `firestore.googleapis.com`.</li>
-            <li>Or check if your ad-blocker or proxy is blocking Firestore connections.</li>
-          </ul>
-        </div>
-        <button onClick={() => window.location.reload()} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-full transition-colors font-medium">
-          I've created it, Retry
-        </button>
-      </div>
-    );
-  }
 
   // Handle Maintenance Mode
   if (sysSettings?.isMaintenance || sysSettings?.isUpdating) {
@@ -511,12 +388,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showAdminPanel && currentUser?.email === 'xrihman@gmail.com' && (
-          <AdminPanel onClose={() => setShowAdminPanel(false)} />
-        )}
-      </AnimatePresence>
-
       {/* Header */}
       <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-6 py-4 md:px-12 md:py-6">
         <div className="flex items-center gap-3">
@@ -560,47 +431,6 @@ export default function App() {
               <Volume2 size={18} className="opacity-70" />
             )}
           </button>
-          
-          {currentUser?.email === 'xrihman@gmail.com' && (
-            <button
-              onClick={() => setShowAdminPanel(true)}
-              className="p-2 rounded-full bg-red-600/20 hover:bg-red-500/40 text-red-100 transition-colors border border-red-500/30"
-              title="Admin Panel"
-            >
-              <Settings size={18} className="opacity-90" />
-            </button>
-          )}
-
-          {currentUser ? (
-            <button
-              onClick={() => logOut()}
-              className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
-              title="Log Out"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                if (isLoggingIn) return;
-                setIsLoggingIn(true);
-                import("./firebase").then(mod => {
-                  mod.signInWithGoogle().catch(err => {
-                    if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-                      console.error("Login failed", err);
-                    }
-                  }).finally(() => {
-                    setIsLoggingIn(false);
-                  });
-                });
-              }}
-              disabled={isLoggingIn}
-              className={`px-4 py-1.5 rounded-full ${isLoggingIn ? 'bg-red-900/50 cursor-not-allowed' : 'bg-red-600/20 hover:bg-red-600/40'} text-red-100 transition-colors border border-red-500/30 text-sm font-medium flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.3)]`}
-              title="Log In to save memories"
-            >
-              {isLoggingIn ? 'Wait...' : 'Sign In'}
-            </button>
-          )}
         </div>
       </header>
 
