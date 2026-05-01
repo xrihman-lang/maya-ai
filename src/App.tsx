@@ -43,6 +43,8 @@ export default function App() {
   const [broadcast, setBroadcast] = useState<BroadcastData | null>(null);
   const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState<number>(0);
 
+  const [logoError, setLogoError] = useState(false);
+
   // Removed Firebase Auth logic
   useEffect(() => {
     // Load local memory if any
@@ -391,10 +393,21 @@ export default function App() {
       {/* Header */}
       <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-6 py-4 md:px-12 md:py-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-red-600 to-black border border-red-500/50 flex items-center justify-center font-bold text-sm text-red-100 shadow-[0_0_10px_rgba(220,38,38,0.5)]">
-            M
-          </div>
-          <h1 className="text-xl font-serif font-medium tracking-wide opacity-90">Maya</h1>
+          {!logoError ? (
+            <img 
+              src="/maya_logo.png" 
+              alt="Maya AI" 
+              className="h-10 md:h-12 w-auto object-contain drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]"
+              onError={() => setLogoError(true)}
+            />
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-red-600 to-black border border-red-500/50 flex items-center justify-center font-bold text-sm text-red-100 shadow-[0_0_10px_rgba(220,38,38,0.5)]">
+                M
+              </div>
+              <h1 className="text-xl font-serif font-medium tracking-wide opacity-90">Maya</h1>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
