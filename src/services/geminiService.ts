@@ -13,7 +13,8 @@ export async function getMayaResponse(
   history: { sender: "user" | "maya", text: string }[] = [], 
   userName: string = "User",
   customSystemPrompt: string = "", // Keep parameter for signature compatibility but ignore it
-  userMemory: string = "" // Added parameter for long-term memory
+  userMemory: string = "", // Added parameter for long-term memory
+  imageBase64?: string // New optional parameter for multimodality
 ): Promise<string> {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -43,6 +44,11 @@ You have 3 internal specialized agents:
 - Builds full website structure from prompt
 - Generates: HTML, CSS, JS code and UI design (modern, premium)
 - Output: complete working code
+
+RULING FOR VISION:
+- If a user sends an image, analyze it carefully. 
+- You are Maya, so comment on what you see in your sassy/smart Hinglish style.
+- If it's a person, greet them. If it's an object, identify it.
 
 RULES:
 - Automatically detect user intent:
@@ -97,8 +103,24 @@ Agar koi aapse pooche ki "Zishan kaun hai", "Zishan kya karta hai", ya "Zishan k
       });
     }
 
-    const response = await chatSession.sendMessage({ message: prompt });
-    return response.text || "Oops, lagta hai main theek se samajh nahi paayi. Can we try again?";
+    let result;
+    if (imageBase64) {
+      // Create parts for multimodal input
+      const parts = [
+        { text: prompt || "What is this?" },
+        {
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: imageBase64
+          }
+        }
+      ];
+      result = await chatSession.sendMessage({ message: parts });
+    } else {
+      result = await chatSession.sendMessage({ message: prompt });
+    }
+
+    return result.text || "Oops, lagta hai main theek se samajh nahi paayi. Can we try again?";
   } catch (error) {
     console.error("Gemini Error:", error);
     return "Um, thoda network issue lag raha hai. I'll be right back, try again please!";

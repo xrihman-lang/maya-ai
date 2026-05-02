@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, AlertTriangle, Shield, Info, X, Settings } from "lucide-react";
+import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, AlertTriangle, Shield, Info, X, Settings, Camera, Video } from "lucide-react";
 import { getMayaResponse, getMayaAudio, resetMayaSession, extractAndUpdateMemory } from "./services/geminiService";
 import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
 import Visualizer from "./components/Visualizer";
+import CameraCapture from "./components/CameraCapture";
+import LiveLens from "./components/LiveLens";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -109,6 +111,8 @@ export default function App() {
   }, [isMuted]);
 
   const [showTextInput, setShowTextInput] = useState(false);
+  const [showLiveLens, setShowLiveLens] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [textInput, setTextInput] = useState("");
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -189,6 +193,28 @@ export default function App() {
       setAppState("idle");
     }
   }, [isMuted, isSessionActive]);
+
+  const handleImageCapture = async (base64Image: string) => {
+    setAppState("processing");
+    await saveMessageLocal({ sender: "user", text: "[Sent a photo]" });
+    
+    try {
+      const responseText = await getMayaResponse("I sent you a photo. What can you see?", messagesRef.current, "User", sysSettings?.systemPrompt, userMemory, base64Image);
+      await saveMessageLocal({ sender: "maya", text: responseText });
+      
+      if (!isMuted) {
+        setAppState("speaking");
+        const audioBase64 = await getMayaAudio(responseText);
+        if (audioBase64) {
+          await playPCM(audioBase64);
+        }
+      }
+      setAppState("idle");
+    } catch (error) {
+      console.error("Image processing error:", error);
+      setAppState("idle");
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -550,6 +576,23 @@ export default function App() {
           )}
         </AnimatePresence>
 
+        <AnimatePresence>
+          {showCamera && (
+            <CameraCapture 
+              onCapture={handleImageCapture}
+              onClose={() => setShowCamera(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showLiveLens && (
+            <LiveLens 
+              onClose={() => setShowLiveLens(false)}
+            />
+          )}
+        </AnimatePresence>
+
         <div className="flex items-center gap-4">
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -582,6 +625,22 @@ export default function App() {
             )}
           </motion.button>
           
+          <button
+            onClick={() => setShowLiveLens(!showLiveLens)}
+            className={`p-5 rounded-full border transition-all shadow-2xl group ${showLiveLens ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+            title="Live Camera Feed"
+          >
+            <Video size={24} className={showLiveLens ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
+          </button>
+
+          <button
+            onClick={() => setShowCamera(!showCamera)}
+            className={`p-5 rounded-full border transition-all shadow-2xl group ${showCamera ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+            title="Send a photo"
+          >
+            <Camera size={24} className={showCamera ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
+          </button>
+
           <button
             onClick={() => setShowTextInput(!showTextInput)}
             className={`p-5 rounded-full border transition-all shadow-2xl group ${showTextInput ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
