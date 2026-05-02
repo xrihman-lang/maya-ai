@@ -35,49 +35,37 @@ export default function NameSecurityModal({ currentName, onSave, onClose }: Name
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const trimmedName = name.trim();
     if (!trimmedName || !password) {
       setError("Name and Password required.");
       return;
     }
 
-    // Check in users map
-    const usersRaw = localStorage.getItem("maya_users_db") || "{}";
-    const users = JSON.parse(usersRaw);
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmedName, password }),
+      });
 
-    if (users[trimmedName]) {
-      if (users[trimmedName] === password) {
-        // Success: set this user as current
+      const data = await response.json();
+      if (response.ok) {
         localStorage.setItem("maya_user_password", password);
         onSave(trimmedName);
         onClose();
       } else {
-        setError("Wrong password for this name!");
+        setError(data.error || "Login failed");
       }
-    } else {
-      // Fallback for the very first/legacy user if not in map
-      const legacyName = localStorage.getItem("maya_user_name");
-      const legacyPass = localStorage.getItem("maya_user_password");
-      if (trimmedName === legacyName && password === legacyPass) {
-        onSave(trimmedName);
-        onClose();
-      } else {
-        setError("Account not found! Sabse pehle sign up karein.");
-      }
+    } catch (err) {
+      setError("Server error. Try again later.");
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       setError("Please enter a name.");
-      return;
-    }
-
-    // Special check for 'Zishan'
-    if (trimmedName.toLowerCase() === "zishan") {
-      setError("Pehle se yeh naam use hai, iske aage koi number lagao (e.g. Zishan001)");
       return;
     }
 
@@ -90,15 +78,24 @@ export default function NameSecurityModal({ currentName, onSave, onClose }: Name
       return;
     }
     
-    // Save to users map
-    const usersRaw = localStorage.getItem("maya_users_db") || "{}";
-    const users = JSON.parse(usersRaw);
-    users[trimmedName] = password;
-    localStorage.setItem("maya_users_db", JSON.stringify(users));
+    try {
+      const response = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmedName, password }),
+      });
 
-    localStorage.setItem("maya_user_password", password);
-    onSave(trimmedName);
-    onClose();
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem("maya_user_password", password);
+        onSave(trimmedName);
+        onClose();
+      } else {
+        setError(data.error || "Signup failed");
+      }
+    } catch (err) {
+      setError("Server error. Try again later.");
+    }
   };
 
   return (
