@@ -35,34 +35,30 @@ export default function NameSecurityModal({ currentName, onSave, onClose }: Name
     }
   };
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     const trimmedName = name.trim();
     if (!trimmedName || !password) {
       setError("Name and Password required.");
       return;
     }
 
-    try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName, password }),
-      });
+    const usersRaw = localStorage.getItem("maya_users_db") || "{}";
+    const users = JSON.parse(usersRaw);
 
-      const data = await response.json();
-      if (response.ok) {
+    if (users[trimmedName]) {
+      if (users[trimmedName] === password) {
         localStorage.setItem("maya_user_password", password);
         onSave(trimmedName);
         onClose();
       } else {
-        setError(data.error || "Login failed");
+        setError("Wrong password for this name!");
       }
-    } catch (err) {
-      setError("Server error. Try again later.");
+    } else {
+      setError("Account not found! Sabse pehle sign up karein.");
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       setError("Please enter a name.");
@@ -78,24 +74,16 @@ export default function NameSecurityModal({ currentName, onSave, onClose }: Name
       return;
     }
     
-    try {
-      const response = await fetch("/api/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName, password }),
-      });
+    // Save to users map in localStorage
+    const usersRaw = localStorage.getItem("maya_users_db") || "{}";
+    const users = JSON.parse(usersRaw);
+    users[trimmedName] = password;
+    localStorage.setItem("maya_users_db", JSON.stringify(users));
 
-      const data = await response.json();
-      if (response.ok) {
-        localStorage.setItem("maya_user_password", password);
-        onSave(trimmedName);
-        onClose();
-      } else {
-        setError(data.error || "Signup failed");
-      }
-    } catch (err) {
-      setError("Server error. Try again later.");
-    }
+    localStorage.setItem("maya_user_name", trimmedName);
+    localStorage.setItem("maya_user_password", password);
+    onSave(trimmedName);
+    onClose();
   };
 
   return (
