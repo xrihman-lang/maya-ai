@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, AlertTriangle, Shield, Info, X, Settings, Camera, Video } from "lucide-react";
+import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, AlertTriangle, Shield, Info, X, Settings, Camera, Video, User } from "lucide-react";
 import { getMayaResponse, getMayaAudio, resetMayaSession, extractAndUpdateMemory } from "./services/geminiService";
 import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
 import Visualizer from "./components/Visualizer";
 import CameraCapture from "./components/CameraCapture";
 import LiveLens from "./components/LiveLens";
+import NameSecurityModal from "./components/NameSecurityModal";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -39,6 +40,9 @@ declare global {
 
 export default function App() {
   const [userMemory, setUserMemory] = useState<string>("");
+  const [userName, setUserName] = useState<string>(() => {
+    return localStorage.getItem("maya_user_name") || "User";
+  });
 
   const [appState, setAppState] = useState<AppState>("idle");
   const [sysSettings, setSysSettings] = useState<SystemSettings | null>(null);
@@ -118,12 +122,20 @@ export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
 
   const liveSessionRef = useRef<LiveSessionManager | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleNameChange = (newName: string) => {
+    setUserName(newName);
+    localStorage.setItem("maya_user_name", newName);
+    resetMayaSession();
+    saveMessageLocal({ sender: "maya", text: `Theek hai! Ab se main aapko ${newName} bulaungi. 😊` });
   };
 
   useEffect(() => {
@@ -172,11 +184,11 @@ export default function App() {
       }, 1500);
     } else {
       // 2. General Chit-Chat via Gemini
-      responseText = await getMayaResponse(finalTranscript, messagesRef.current, "User", sysSettings?.systemPrompt, userMemory);
+      responseText = await getMayaResponse(finalTranscript, messagesRef.current, userName, sysSettings?.systemPrompt, userMemory);
       await saveMessageLocal({ sender: "maya", text: responseText });
       
       // Update memory in background
-      extractAndUpdateMemory("User", userMemory, finalTranscript, responseText).then(async (newMemory) => {
+      extractAndUpdateMemory(userName, userMemory, finalTranscript, responseText).then(async (newMemory) => {
         if (newMemory && newMemory !== userMemory) {
           setUserMemory(newMemory);
           localStorage.setItem("maya_user_memory", newMemory);
@@ -192,14 +204,14 @@ export default function App() {
       }
       setAppState("idle");
     }
-  }, [isMuted, isSessionActive]);
+  }, [isMuted, isSessionActive, userName, userMemory, sysSettings]);
 
   const handleImageCapture = async (base64Image: string) => {
     setAppState("processing");
     await saveMessageLocal({ sender: "user", text: "[Sent a photo]" });
     
     try {
-      const responseText = await getMayaResponse("I sent you a photo. What can you see?", messagesRef.current, "User", sysSettings?.systemPrompt, userMemory, base64Image);
+      const responseText = await getMayaResponse("I sent you a photo. What can you see?", messagesRef.current, userName, sysSettings?.systemPrompt, userMemory, base64Image);
       await saveMessageLocal({ sender: "maya", text: responseText });
       
       if (!isMuted) {
@@ -230,7 +242,7 @@ export default function App() {
     setIsProcessingLiveFrame(true);
     try {
       const livePrompt = "You are in a live video call. Briefly comment on what you see right now or if something changed. Keep it sasssy and very short (one sentence). If nothing much is happening, just say nothing.";
-      const responseText = await getMayaResponse(livePrompt, messagesRef.current, "User", sysSettings?.systemPrompt, userMemory, base64Image);
+      const responseText = await getMayaResponse(livePrompt, messagesRef.current, userName, sysSettings?.systemPrompt, userMemory, base64Image);
       
       // Only react if she actually has something interesting to say (not 'nothing')
       if (responseText && !responseText.toLowerCase().includes("nothing") && responseText.length > 5) {
@@ -274,7 +286,7 @@ export default function App() {
         setIsSessionActive(true);
         resetMayaSession();
         
-        const session = new LiveSessionManager("User");
+        const session = new LiveSessionManager(userName);
         session.isMuted = isMuted;
         liveSessionRef.current = session;
         
@@ -472,6 +484,14 @@ export default function App() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowNameModal(true)}
+            className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10 flex items-center gap-2 px-3"
+            title="Set your name"
+          >
+            <User size={18} className="opacity-70" />
+            <span className="text-xs font-medium opacity-70 hidden sm:inline">{userName}</span>
+          </button>
           <button
             onClick={() => setShowPrivacyDialog(true)}
             className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
@@ -694,6 +714,16 @@ export default function App() {
           </button>
         </div>
       </footer>
+
+      <AnimatePresence>
+        {showNameModal && (
+          <NameSecurityModal 
+            currentName={userName}
+            onSave={handleNameChange}
+            onClose={() => setShowNameModal(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

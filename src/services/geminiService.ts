@@ -67,7 +67,7 @@ Agar koi aapse Zishan ke doston ke baare mein pooche, toh ye naam batana: Adil, 
       
       const memoryPrompt = userMemory ? `\n\n[LONG-TERM MEMORY ABOUT ${userName}]:\n${userMemory}\n(Use this information to personalize your responses and show that you remember them.)` : "";
       
-      const dynamicSystemInstruction = defaultPrompt + `\n\nYou are currently talking to: ${userName}.` + memoryPrompt;
+      const dynamicSystemInstruction = defaultPrompt + `\n\n[USER IDENTITY]:\nThe person you are talking to is named ${userName}. Always address them as ${userName} if they ask who they are or who you are talking to.` + memoryPrompt;
 
       // SLIDING WINDOW MEMORY: Keep only the last 20 messages to prevent "buffer full" (context window overflow)
       const recentHistory = history.slice(-20);
