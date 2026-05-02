@@ -65,6 +65,12 @@ export default function NameSecurityModal({ currentName, onSave, onClose }: Name
       return;
     }
 
+    // Special check for 'Zishan'
+    if (trimmedName.toLowerCase() === "zishan") {
+      setError("Pehle se yeh naam use hai, iske aage koi number lagao (e.g. Zishan001)");
+      return;
+    }
+
     if (password.length < 4) {
       setError("Password must be at least 4 characters.");
       return;
