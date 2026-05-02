@@ -23,6 +23,13 @@ async function startServer() {
     )
   `);
 
+  // Pre-seed 'zishan' user if it doesn't exist
+  const checkZishan = db.prepare("SELECT * FROM users WHERE name = ?").get("zishan");
+  if (!checkZishan) {
+    db.prepare("INSERT INTO users (name, password) VALUES (?, ?)").run("zishan", "7860");
+    console.log("Pre-seeded user 'zishan' with password '7860'");
+  }
+
   app.use(express.json());
 
   // API Routes
