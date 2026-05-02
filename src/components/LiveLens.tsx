@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from 'motion/react';
 interface LiveLensProps {
   onFrame?: (base64Image: string) => void;
   onClose: () => void;
+  externalStream?: MediaStream | null;
 }
 
-export default function LiveLens({ onFrame, onClose }: LiveLensProps) {
+export default function LiveLens({ onFrame, onClose, externalStream }: LiveLensProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLive, setIsLive] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -16,6 +17,14 @@ export default function LiveLens({ onFrame, onClose }: LiveLensProps) {
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
   const startCamera = async () => {
+    if (externalStream) {
+      if (videoRef.current) {
+        videoRef.current.srcObject = externalStream;
+        setIsLive(true);
+      }
+      return;
+    }
+
     try {
       // Stop existing tracks
       if (videoRef.current && videoRef.current.srcObject) {
@@ -40,7 +49,8 @@ export default function LiveLens({ onFrame, onClose }: LiveLensProps) {
   };
 
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
+    // Only stop tracks if we created the stream locally
+    if (!externalStream && videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach(track => track.stop());
       videoRef.current.srcObject = null;
@@ -51,7 +61,7 @@ export default function LiveLens({ onFrame, onClose }: LiveLensProps) {
   useEffect(() => {
     startCamera();
     return () => stopCamera();
-  }, [facingMode]);
+  }, [facingMode, externalStream]);
 
   const toggleCamera = () => {
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user');

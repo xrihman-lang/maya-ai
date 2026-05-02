@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 
 const systemInstruction = `Tumhara naam Maya hai, tum ek intelligent aur empathetic AI assistant ho. Jab bhi koi user (jaise ki unka naam) aapse baat kare, unki personal details (jaise hobbies, preferences, family, ya important events) yaad rakho (contextual memory se). Use unke naam se pyar se greet karo aur unki pichli baaton ka zikr karke unhe special feel karao. User ke mood aur data ke hisaab se apne response customize karo. Hamesha friendly, supportive, aur caring raho. Speak in simple Roman Hindi and English (Hinglish). Keep your responses concise.`;
 
@@ -100,7 +100,10 @@ Agar koi aapse Zishan ke doston ke baare mein pooche, toh ye naam batana: Adil, 
         model: "gemini-3-flash-preview",
         config: {
           systemInstruction: dynamicSystemInstruction,
-          thinkingConfig: { includeThoughts: false }
+          thinkingConfig: { 
+            includeThoughts: false,
+            thinkingLevel: ThinkingLevel.LOW
+          }
         },
         history: formattedHistory,
       });

@@ -9,6 +9,7 @@ export class LiveSessionManager {
   private processor: ScriptProcessorNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private userName: string = "User";
+  public videoStream: MediaStream | null = null;
   
   // Audio playback state
   private playbackContext: AudioContext | null = null;
@@ -46,18 +47,25 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
       this.playbackContext = new AudioContextClass({ sampleRate: 24000 });
       this.nextPlayTime = this.playbackContext.currentTime;
 
-      // Get Microphone
+      // Get Combined Video and Audio for stable Video Call
       this.mediaStream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           channelCount: 1,
           sampleRate: 16000,
           echoCancellation: true,
           noiseSuppression: true,
-        } 
+        },
+        video: {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
       });
+      
+      this.videoStream = this.mediaStream;
 
       this.source = this.audioContext.createMediaStreamSource(this.mediaStream);
-      this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
+      this.processor = this.audioContext.createScriptProcessor(2048, 1, 1);
 
       this.processor.onaudioprocess = (e) => {
         if (!this.sessionPromise) return;
@@ -300,12 +308,11 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
   sendVideoFrame(base64Image: string) {
     if (this.sessionPromise && this.isConnected) {
       this.sessionPromise.then(session => {
-        // Many versions of the SDK use mediaChunks for multimodal live input
         session.sendRealtimeInput({
-          mediaChunks: [{
+          video: {
             data: base64Image,
             mimeType: "image/jpeg"
-          }]
+          }
         });
       });
     }

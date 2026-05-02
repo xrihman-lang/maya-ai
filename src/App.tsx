@@ -626,6 +626,7 @@ export default function App() {
             <LiveLens 
               onFrame={handleLiveFrame}
               onClose={() => setShowLiveLens(false)}
+              externalStream={isSessionActive ? liveSessionRef.current?.videoStream : null}
             />
           )}
         </AnimatePresence>
@@ -663,9 +664,15 @@ export default function App() {
           </motion.button>
           
           <button
-            onClick={() => setShowLiveLens(!showLiveLens)}
+            onClick={() => {
+              const newShow = !showLiveLens;
+              setShowLiveLens(newShow);
+              if (newShow && !isSessionActive) {
+                toggleListening();
+              }
+            }}
             className={`p-5 rounded-full border transition-all shadow-2xl group ${showLiveLens ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-            title="Live Camera Feed"
+            title="Video Call (Voice + Camera)"
           >
             <Video size={24} className={showLiveLens ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
           </button>
