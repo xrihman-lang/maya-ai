@@ -216,6 +216,36 @@ export default function App() {
     }
   };
 
+  const [isProcessingLiveFrame, setIsProcessingLiveFrame] = useState(false);
+
+  const handleLiveFrame = useCallback(async (base64Image: string) => {
+    if (isProcessingLiveFrame || appState === 'speaking' || appState === 'processing') return;
+    
+    setIsProcessingLiveFrame(true);
+    try {
+      const livePrompt = "You are in a live video call. Briefly comment on what you see right now or if something changed. Keep it sasssy and very short (one sentence). If nothing much is happening, just say nothing.";
+      const responseText = await getMayaResponse(livePrompt, messagesRef.current, "User", sysSettings?.systemPrompt, userMemory, base64Image);
+      
+      // Only react if she actually has something interesting to say (not 'nothing')
+      if (responseText && !responseText.toLowerCase().includes("nothing") && responseText.length > 5) {
+        await saveMessageLocal({ sender: "maya", text: responseText });
+        
+        if (!isMuted) {
+          setAppState("speaking");
+          const audioBase64 = await getMayaAudio(responseText);
+          if (audioBase64) {
+            await playPCM(audioBase64);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Live analysis failed", e);
+    } finally {
+      setIsProcessingLiveFrame(false);
+      setAppState("idle");
+    }
+  }, [isProcessingLiveFrame, appState, isMuted, sysSettings, userMemory]);
+
   useEffect(() => {
     return () => {
       if (liveSessionRef.current) {
@@ -588,6 +618,7 @@ export default function App() {
         <AnimatePresence>
           {showLiveLens && (
             <LiveLens 
+              onFrame={handleLiveFrame}
               onClose={() => setShowLiveLens(false)}
             />
           )}

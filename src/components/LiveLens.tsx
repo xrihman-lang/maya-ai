@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, X, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
+import { Camera, X, RefreshCw, Maximize2, Minimize2, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface LiveLensProps {
@@ -11,6 +11,7 @@ export default function LiveLens({ onFrame, onClose }: LiveLensProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLive, setIsLive] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isSmartVision, setIsSmartVision] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
@@ -56,26 +57,31 @@ export default function LiveLens({ onFrame, onClose }: LiveLensProps) {
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
   };
 
-  // Interval for sending frames if needed
+  // Interval for sending frames to Maya
   useEffect(() => {
-    if (!isLive || !onFrame) return;
+    if (!isLive || !onFrame || !isSmartVision) return;
     
     const interval = setInterval(() => {
       if (videoRef.current) {
         const canvas = document.createElement('canvas');
-        canvas.width = videoRef.current.videoWidth;
-        canvas.height = videoRef.current.videoHeight;
+        canvas.width = 320; // Reduced resolution for faster API processing
+        canvas.height = 240;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          ctx.drawImage(videoRef.current, 0, 0);
+          // Draw and mirror if front camera
+          if (facingMode === 'user') {
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+          }
+          ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
           const base64 = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
           onFrame(base64);
         }
       }
-    }, 2000); // Send every 2 seconds
+    }, 5000); // Analyze every 5 seconds to manage quota and flow
 
     return () => clearInterval(interval);
-  }, [isLive, onFrame]);
+  }, [isLive, onFrame, isSmartVision, facingMode]);
 
   return (
     <motion.div 
@@ -113,30 +119,44 @@ export default function LiveLens({ onFrame, onClose }: LiveLensProps) {
 
         {/* HUD Overlay */}
         <div className="absolute inset-0 pointer-events-none border border-red-500/20">
-           <div className="absolute top-4 left-4 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-[10px] tracking-widest text-red-100 uppercase font-bold drop-shadow-md">Live Stream</span>
+           <div className="absolute top-4 left-4 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[10px] tracking-widest text-red-100 uppercase font-bold drop-shadow-md">Live Stream</span>
+              </div>
+              {isSmartVision && (
+                <div className="flex items-center gap-2 bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded text-[8px] text-blue-300 uppercase font-bold">
+                   Maya Vision Active
+                </div>
+              )}
            </div>
         </div>
 
         {/* Controls */}
         <div className="absolute top-4 right-4 flex gap-2 pointer-events-auto">
           <button 
+            onClick={() => setIsSmartVision(!isSmartVision)}
+            className={`p-1.5 rounded-full border transition-colors ${isSmartVision ? "bg-blue-600/40 border-blue-500 text-white" : "bg-black/40 border-white/10 text-white/30"}`}
+            title={isSmartVision ? "Disable AI Vision" : "Enable AI Vision"}
+          >
+            <Zap size={16} />
+          </button>
+          <button 
             onClick={toggleCamera}
-            className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/50 hover:text-white transition-colors"
-            title="Switch Camera (Pichla Camera)"
+            className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/50 hover:text-white transition-colors border border-white/10"
+            title="Switch Camera"
           >
             <RefreshCw size={16} className={!isLive ? "animate-spin" : ""} />
           </button>
           <button 
             onClick={() => setIsMinimized(!isMinimized)}
-            className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/50 hover:text-white transition-colors"
+            className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/50 hover:text-white transition-colors border border-white/10"
           >
             {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
           </button>
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/50 hover:text-white transition-colors"
+            className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/50 hover:text-white transition-colors border border-white/10"
           >
             <X size={16} />
           </button>
