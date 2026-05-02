@@ -12,12 +12,19 @@ export default function LiveLens({ onFrame, onClose }: LiveLensProps) {
   const [isLive, setIsLive] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
   const startCamera = async () => {
     try {
+      // Stop existing tracks
+      if (videoRef.current && videoRef.current.srcObject) {
+         const stream = videoRef.current.srcObject as MediaStream;
+         stream.getTracks().forEach(track => track.stop());
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: 'user', 
+          facingMode: facingMode, 
           width: { ideal: 640 },
           height: { ideal: 480 }
         } 
@@ -43,7 +50,11 @@ export default function LiveLens({ onFrame, onClose }: LiveLensProps) {
   useEffect(() => {
     startCamera();
     return () => stopCamera();
-  }, []);
+  }, [facingMode]);
+
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
 
   // Interval for sending frames if needed
   useEffect(() => {
@@ -96,8 +107,8 @@ export default function LiveLens({ onFrame, onClose }: LiveLensProps) {
           autoPlay
           playsInline
           muted
-          className="w-full h-full object-cover mirror"
-          style={{ transform: 'scaleX(-1)' }}
+          className="w-full h-full object-cover"
+          style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
         />
 
         {/* HUD Overlay */}
@@ -110,6 +121,13 @@ export default function LiveLens({ onFrame, onClose }: LiveLensProps) {
 
         {/* Controls */}
         <div className="absolute top-4 right-4 flex gap-2 pointer-events-auto">
+          <button 
+            onClick={toggleCamera}
+            className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/50 hover:text-white transition-colors"
+            title="Switch Camera (Pichla Camera)"
+          >
+            <RefreshCw size={16} className={!isLive ? "animate-spin" : ""} />
+          </button>
           <button 
             onClick={() => setIsMinimized(!isMinimized)}
             className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/50 hover:text-white transition-colors"

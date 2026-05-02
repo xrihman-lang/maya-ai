@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, X, Zap, CameraOff } from 'lucide-react';
+import { Camera, X, Zap, CameraOff, RefreshCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CameraCaptureProps {
@@ -12,14 +12,22 @@ export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
   const startCamera = async () => {
     try {
       setError(null);
+      
+      // Stop existing tracks if any before starting new ones
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+      }
+
       setIsCameraOpen(true);
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: 'user',
+          facingMode: facingMode,
           width: { ideal: 1280 },
           height: { ideal: 720 }
         } 
@@ -47,7 +55,11 @@ export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps
   useEffect(() => {
     startCamera();
     return () => stopCamera();
-  }, []);
+  }, [facingMode]);
+
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
 
   const takePhoto = () => {
     if (!videoRef.current || isCapturing) return;
@@ -136,7 +148,7 @@ export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps
                   playsInline 
                   muted
                   className="w-full h-full object-cover"
-                  style={{ transform: 'scaleX(-1)' }} // Mirror view
+                  style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} // Mirror only for front camera
                 />
                 
                 {/* Flash overlay */}
@@ -162,21 +174,35 @@ export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps
         </div>
 
         {/* Footer Area with Capture Button */}
-        <div className="p-8 bg-gradient-to-t from-black via-[#050505] to-transparent flex flex-col items-center gap-6">
+        <div className="p-8 bg-gradient-to-t from-black via-[#050505] to-transparent flex flex-col items-center gap-6 relative">
            {isCameraOpen && (
-             <motion.button
-               whileHover={{ scale: 1.05 }}
-               whileTap={{ scale: 0.9 }}
-               onClick={takePhoto}
-               disabled={isCapturing}
-               className="group relative flex items-center gap-3 bg-red-600 hover:bg-red-500 text-white px-10 py-4 rounded-full font-bold uppercase tracking-widest text-sm shadow-[0_0_30px_rgba(220,38,38,0.4)] transition-all"
-             >
-               <Camera size={20} className={isCapturing ? "animate-spin" : ""} />
-               <span>{isCapturing ? "Processing..." : "Capture Photo"}</span>
-               
-               {/* Pulsing decoration */}
-               <span className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping opacity-20" />
-             </motion.button>
+             <div className="flex items-center gap-6">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={toggleCamera}
+                  className="p-4 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-all shadow-xl"
+                  title="Switch Camera (Pichla Camera)"
+                >
+                  <RefreshCcw size={24} />
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={takePhoto}
+                  disabled={isCapturing}
+                  className="group relative flex items-center gap-3 bg-red-600 hover:bg-red-500 text-white px-10 py-4 rounded-full font-bold uppercase tracking-widest text-sm shadow-[0_0_30px_rgba(220,38,38,0.4)] transition-all"
+                >
+                  <Camera size={20} className={isCapturing ? "animate-spin" : ""} />
+                  <span>{isCapturing ? "Processing..." : "Capture"}</span>
+                  
+                  {/* Pulsing decoration */}
+                  <span className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping opacity-20" />
+                </motion.button>
+
+                <div className="w-[56px]" /> {/* Spacer to balance the layout */}
+             </div>
            )}
            
            <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-medium">
