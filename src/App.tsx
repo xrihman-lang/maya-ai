@@ -219,6 +219,12 @@ export default function App() {
   const [isProcessingLiveFrame, setIsProcessingLiveFrame] = useState(false);
 
   const handleLiveFrame = useCallback(async (base64Image: string) => {
+    // If we have an active real-time session, send the frame directly through it
+    if (isSessionActive && liveSessionRef.current) {
+      liveSessionRef.current.sendVideoFrame(base64Image);
+      return;
+    }
+
     if (isProcessingLiveFrame || appState === 'speaking' || appState === 'processing') return;
     
     setIsProcessingLiveFrame(true);

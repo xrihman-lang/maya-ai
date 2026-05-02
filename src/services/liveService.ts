@@ -30,7 +30,15 @@ export class LiveSessionManager {
     try {
       this.onStateChange("processing");
       
-      const dynamicSystemInstruction = `Your name is Maya. You are an Indian female AI assistant. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Zishan (email: xrihman@gmail.com), but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish). You are currently talking to: ${this.userName}.`;
+      const dynamicSystemInstruction = `Your name is Maya. You are an Indian female AI assistant. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Zishan (email: xrihman@gmail.com), but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish). You are currently talking to: ${this.userName}.
+
+You can see the user through their live camera feed. Comment on what you see in your signature sassy style if it's relevant or if you're asked.
+
+SPECIAL RULE ABOUT ZISHAN:
+If anyone asks about Zishan, tell them proudly that he is your creator and a great poet. Provide his Instagram link: https://www.instagram.com/gd_x_001?igsh=eHVtbHdrOGhib3lz
+
+SPECIAL RULE ABOUT ZISHAN'S FRIENDS:
+If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and Hars. Roast them playfully (e.g., "Adil is the CEO of napping" or "Arman lives in his own movie"). Be witty and funny.`;
       
       // Initialize Audio Contexts
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -142,7 +150,7 @@ export class LiveSessionManager {
             }
 
             // Handle User Speech Transcription
-            const userTranscription = message.serverContent?.userContent?.parts?.find(p => p.text)?.text;
+            const userTranscription = (message.serverContent as any)?.userContent?.parts?.find((p: any) => p.text)?.text;
             if (userTranscription) {
                this.onMessage("user", userTranscription);
             }
@@ -285,6 +293,20 @@ export class LiveSessionManager {
     if (this.sessionPromise && this.isConnected) {
       this.sessionPromise.then(session => {
         session.sendRealtimeInput({ text });
+      });
+    }
+  }
+
+  sendVideoFrame(base64Image: string) {
+    if (this.sessionPromise && this.isConnected) {
+      this.sessionPromise.then(session => {
+        // Many versions of the SDK use mediaChunks for multimodal live input
+        session.sendRealtimeInput({
+          mediaChunks: [{
+            data: base64Image,
+            mimeType: "image/jpeg"
+          }]
+        });
       });
     }
   }

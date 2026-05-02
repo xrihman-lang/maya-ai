@@ -64,21 +64,20 @@ export default function LiveLens({ onFrame, onClose }: LiveLensProps) {
     const interval = setInterval(() => {
       if (videoRef.current) {
         const canvas = document.createElement('canvas');
-        canvas.width = 320; // Reduced resolution for faster API processing
-        canvas.height = 240;
+        canvas.width = 480; // Optimized for performance
+        canvas.height = 360;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          // Draw and mirror if front camera
           if (facingMode === 'user') {
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
           }
           ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-          const base64 = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+          const base64 = canvas.toDataURL('image/jpeg', 0.4).split(',')[1];
           onFrame(base64);
         }
       }
-    }, 5000); // Analyze every 5 seconds to manage quota and flow
+    }, 3000); // 3-second heartbeat for visual awareness
 
     return () => clearInterval(interval);
   }, [isLive, onFrame, isSmartVision, facingMode]);
