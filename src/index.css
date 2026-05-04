@@ -1,8 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&family=Share+Tech+Mono&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Share Tech Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
@@ -26,94 +26,46 @@ html, body, #root {
   scrollbar-width: none;  /* Firefox */
 }
 
-/* Maya Avatar Styles v2.0 */
+/* Glassmorphism Styles */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 60, 60, 0.15);
+  box-shadow: 0 0 40px rgba(255, 0, 0, 0.2);
+}
+
+.glass-bubble-maya {
+  background: linear-gradient(135deg, rgba(255, 0, 0, 0.15) 0%, rgba(100, 0, 0, 0.05) 100%);
+  border-left: 2px solid var(--maya-red);
+  backdrop-filter: blur(8px);
+}
+
+.glass-bubble-user {
+  background: rgba(255, 255, 255, 0.05);
+  border-right: 2px solid rgba(255,255,255,0.3);
+  backdrop-filter: blur(8px);
+}
+
+/* Wave Animation */
+.wave-span {
+  display: inline-block;
+  width: 4px;
+  height: 10px;
+  margin: 2px;
+  background: red;
+  animation: wave 1s infinite ease-in-out;
+}
+
+.wave-span:nth-child(2) { animation-delay: 0.2s; }
+.wave-span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes wave {
+  0%, 100% { height: 10px; }
+  50% { height: 25px; }
+}
+
 :root {
   --maya-red: #ff0000;
   --maya-glow: rgba(255, 0, 0, 0.6);
-}
-
-.maya-main-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 40px;
-  background: transparent;
-}
-
-.maya-avatar-wrapper {
-  position: relative;
-  width: 280px;
-  height: auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.maya-transparent-img {
-  width: 100%;
-  z-index: 3;
-  filter: drop-shadow(0 0 10px var(--maya-glow));
-  animation: maya-float 4s ease-in-out infinite;
-}
-
-/* Floating Animation */
-@keyframes maya-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-15px); }
-}
-
-/* Neon Pulse Rings */
-.maya-pulse-ring {
-  position: absolute;
-  width: 200px;
-  height: 200px;
-  border: 2px solid var(--maya-red);
-  border-radius: 50%;
-  z-index: 1;
-  animation: pulse-out 3s linear infinite;
-  opacity: 0;
-}
-.delay-1 { animation-delay: 1.5s; }
-
-@keyframes pulse-out {
-  0% { transform: scale(0.8); opacity: 0.8; }
-  100% { transform: scale(1.5); opacity: 0; }
-}
-
-/* Text Styling */
-.maya-info {
-  margin-top: 20px;
-  text-align: center;
-  font-family: 'Courier New', monospace;
-}
-
-.maya-glitch-text {
-  color: white;
-  font-size: 1.2rem;
-  font-weight: bold;
-  letter-spacing: 3px;
-  text-shadow: 2px 2px var(--maya-red);
-}
-
-.maya-status-bar {
-  color: var(--maya-red);
-  font-size: 0.8rem;
-  margin-top: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.blinking-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--maya-red);
-  border-radius: 50%;
-  box-shadow: 0 0 8px var(--maya-red);
-  animation: blink 1s infinite;
-}
-
-@keyframes blink {
-  50% { opacity: 0.3; }
 }

@@ -379,13 +379,8 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Anime Background */}
-      <div 
-        className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/maya-bg.jpg')", opacity: 0.9 }}
-      />
-      {/* Dark Gradient Overlay for readability */}
-      <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-[#050505]/95 via-[#050505]/40 to-[#050505]/95 pointer-events-none" />
+      {/* Background radial gradient */}
+      <div className="absolute inset-0 w-full h-full bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)] z-0" />
 
       {/* About/How to use Dialog */}
       <AnimatePresence>
@@ -528,7 +523,6 @@ export default function App() {
           </button>
         </div>
       </header>
-
       {/* Main Content - Visualizer & Chat */}
       <main className="absolute inset-0 flex flex-row items-center justify-between w-full h-full z-10 overflow-hidden pt-20 pb-24 px-4 md:px-12 pointer-events-none">
         
@@ -553,26 +547,30 @@ export default function App() {
 
         {/* Center Visualizer & Status Area */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-          {/* <Visualizer state={appState} /> */ /* Visualizer disabled per user request */}
-          
-          <div className="absolute top-[25%] left-1/2 -translate-x-1/2 w-full flex justify-center z-10 pointer-events-auto">
-            <div className="maya-main-container">
-              <div className="maya-avatar-wrapper">
-                <div className="maya-pulse-ring"></div>
-                <div className="maya-pulse-ring delay-1"></div>
-                
-                <img 
-                  src="https://i.postimg.cc/ZnRXSx4Z/Adobe-Express-file.png" 
-                  alt="Maya AI" 
-                  className="maya-transparent-img"
-                />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-full flex justify-center z-10 pointer-events-auto">
+            <div className="text-center p-8 rounded-[20px] bg-white/5 backdrop-blur-md shadow-[0_0_40px_rgba(255,0,0,0.2)] border border-white/10 w-[90%] max-w-sm">
+              <motion.img 
+                animate={{ y: [-10, 10, -10] }}
+                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                src="https://i.postimg.cc/ZnRXSx4Z/Adobe-Express-file.png" 
+                alt="Maya AI" 
+                className="w-56 mx-auto mb-5 z-10 relative drop-shadow-[0_0_20px_rgba(255,0,0,0.6)]"
+              />
+              
+              <div className="text-3xl font-semibold mb-2 font-sans tracking-wide">Maya AI</div>
+              <div className="text-sm opacity-70 mb-5 font-sans">
+                {appState === 'speaking' ? 'Speaking...' : appState === 'listening' ? 'Listening...' : appState === 'processing' ? 'Thinking...' : 'Idle...'}
               </div>
 
-              <div className="maya-info">
-                <div className="maya-glitch-text" data-text="MAYA_SYSTEM_v2.0">MAYA_SYSTEM_v2.0</div>
-                <div className="maya-status-bar">
-                  <span className="blinking-dot"></span> SECURE CONNECTION ACTIVE
-                </div>
+              {/* Wave */}
+              <div className="flex items-center justify-center h-8 mx-auto" style={{ gap: '4px' }}>
+                {appState !== 'idle' && (
+                  <>
+                     <span className="wave-span" style={{animationDelay: '0s'}}></span>
+                     <span className="wave-span" style={{animationDelay: '0.2s'}}></span>
+                     <span className="wave-span" style={{animationDelay: '0.4s'}}></span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -596,7 +594,6 @@ export default function App() {
             </AnimatePresence>
           </div>
         </div>
-
       </main>
 
       {/* Controls */}
