@@ -563,7 +563,7 @@ export default function App() {
               </div>
 
               {/* Wave */}
-              <div className="flex items-center justify-center h-8 mx-auto mb-6" style={{ gap: '4px' }}>
+              <div className="flex items-center justify-center h-8 mx-auto" style={{ gap: '4px' }}>
                 {appState !== 'idle' && (
                   <>
                      <span className="wave-span" style={{animationDelay: '0s'}}></span>
@@ -572,35 +572,6 @@ export default function App() {
                   </>
                 )}
               </div>
-
-              {/* Start Button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={toggleListening}
-                className={`
-                  relative px-8 py-3.5 rounded-[30px] font-medium text-base transition-all duration-300 w-full sm:w-auto
-                  ${
-                    isSessionActive
-                      ? "bg-white/10 text-red-400 border border-red-500/30 shadow-[0_0_20px_rgba(220,38,38,0.1)] hover:bg-white/20"
-                      : "bg-gradient-to-r from-[#ff3b3b] to-[#ff6b6b] text-white shadow-[0_0_20px_rgba(255,0,0,0.5)] hover:shadow-[0_0_30px_rgba(255,0,0,0.8)]"
-                  }
-                `}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  {isSessionActive ? (
-                    <>
-                      <MicOff size={18} />
-                      Stop Talking
-                    </>
-                  ) : (
-                    <>
-                      <Mic size={18} />
-                      Start Talking
-                    </>
-                  )}
-                </div>
-              </motion.button>
             </div>
           </div>
         </div>
@@ -677,36 +648,66 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => {
-              const newShow = !showLiveLens;
-              setShowLiveLens(newShow);
-              if (newShow && !isSessionActive) {
-                toggleListening();
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-2xl px-4">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleListening}
+            className={`
+              relative px-10 py-5 rounded-full font-semibold text-lg transition-all duration-300 flex-1 w-full
+              ${
+                isSessionActive
+                  ? "bg-white/10 text-red-100 border border-red-500/30 shadow-[0_0_20px_rgba(220,38,38,0.1)] hover:bg-white/20"
+                  : "bg-gradient-to-r from-[#ff3b3b] to-[#ff6b6b] text-white shadow-[0_0_20px_rgba(255,0,0,0.4)] hover:shadow-[0_0_30px_rgba(255,0,0,0.7)]"
               }
-            }}
-            className={`p-5 rounded-full border transition-all shadow-2xl group ${showLiveLens ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-            title="Video Call (Voice + Camera)"
+            `}
           >
-            <Video size={24} className={showLiveLens ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
-          </button>
+            <div className="flex items-center justify-center gap-3">
+              {isSessionActive ? (
+                <>
+                  <MicOff size={24} />
+                  Stop Talking
+                </>
+              ) : (
+                <>
+                  <Mic size={24} />
+                  Start Talking
+                </>
+              )}
+            </div>
+          </motion.button>
 
-          <button
-            onClick={() => setShowCamera(!showCamera)}
-            className={`p-5 rounded-full border transition-all shadow-2xl group ${showCamera ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-            title="Send a photo"
-          >
-            <Camera size={24} className={showCamera ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
-          </button>
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
+            <button
+              onClick={() => {
+                const newShow = !showLiveLens;
+                setShowLiveLens(newShow);
+                if (newShow && !isSessionActive) {
+                  toggleListening();
+                }
+              }}
+              className={`p-4 rounded-full border transition-all shadow-xl group flex-shrink-0 ${showLiveLens ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+              title="Video Call (Voice + Camera)"
+            >
+              <Video size={24} className={showLiveLens ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
+            </button>
 
-          <button
-            onClick={() => setShowTextInput(!showTextInput)}
-            className={`p-5 rounded-full border transition-all shadow-2xl group ${showTextInput ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-            title="Type a message"
-          >
-            <Keyboard size={24} className={showTextInput ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
-          </button>
+            <button
+              onClick={() => setShowCamera(!showCamera)}
+              className={`p-4 rounded-full border transition-all shadow-xl group flex-shrink-0 ${showCamera ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+              title="Send a photo"
+            >
+              <Camera size={24} className={showCamera ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
+            </button>
+
+            <button
+              onClick={() => setShowTextInput(!showTextInput)}
+              className={`p-4 rounded-full border transition-all shadow-xl group flex-shrink-0 ${showTextInput ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+              title="Type a message"
+            >
+              <Keyboard size={24} className={showTextInput ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
+            </button>
+          </div>
         </div>
       </footer>
 
