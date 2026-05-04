@@ -180,9 +180,15 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
                   } else if (args.actionType === "whatsapp") {
                     url = `https://web.whatsapp.com/send?phone=${args.target || ''}&text=${encodeURIComponent(args.query)}`;
                   } else {
-                    let website = args.query.replace(/\s+/g, "");
-                    if (!website.includes(".")) website += ".com";
-                    url = `https://www.${website}`;
+                    let website = args.query.trim().replace(/\s+/g, "");
+                    if (website.startsWith("http://") || website.startsWith("https://")) {
+                      url = website;
+                    } else if (website.startsWith("www.")) {
+                      url = `https://${website}`;
+                    } else {
+                      if (!website.includes(".")) website += ".com";
+                      url = `https://www.${website}`;
+                    }
                   }
                   
                   this.onCommand(url);

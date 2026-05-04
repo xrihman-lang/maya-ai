@@ -563,7 +563,7 @@ export default function App() {
               </div>
 
               {/* Wave */}
-              <div className="flex items-center justify-center h-8 mx-auto" style={{ gap: '4px' }}>
+              <div className="flex items-center justify-center h-8 mx-auto mb-6" style={{ gap: '4px' }}>
                 {appState !== 'idle' && (
                   <>
                      <span className="wave-span" style={{animationDelay: '0s'}}></span>
@@ -572,6 +572,35 @@ export default function App() {
                   </>
                 )}
               </div>
+
+              {/* Start Button */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={toggleListening}
+                className={`
+                  relative px-8 py-3.5 rounded-[30px] font-medium text-base transition-all duration-300 w-full sm:w-auto
+                  ${
+                    isSessionActive
+                      ? "bg-white/10 text-red-400 border border-red-500/30 shadow-[0_0_20px_rgba(220,38,38,0.1)] hover:bg-white/20"
+                      : "bg-gradient-to-r from-[#ff3b3b] to-[#ff6b6b] text-white shadow-[0_0_20px_rgba(255,0,0,0.5)] hover:shadow-[0_0_30px_rgba(255,0,0,0.8)]"
+                  }
+                `}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  {isSessionActive ? (
+                    <>
+                      <MicOff size={18} />
+                      Stop Talking
+                    </>
+                  ) : (
+                    <>
+                      <Mic size={18} />
+                      Start Talking
+                    </>
+                  )}
+                </div>
+              </motion.button>
             </div>
           </div>
         </div>
@@ -649,37 +678,6 @@ export default function App() {
         </AnimatePresence>
 
         <div className="flex items-center gap-4">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={toggleListening}
-            className={`
-              group relative flex items-center gap-4 px-10 py-5 rounded-full font-bold tracking-widest uppercase text-sm transition-all duration-500 overflow-hidden
-              ${
-                isSessionActive
-                  ? "bg-red-600/10 text-red-500 border-2 border-red-500/30 shadow-[0_0_20px_rgba(220,38,38,0.2)]"
-                  : "bg-red-600/90 text-white border-2 border-red-500 shadow-[0_0_30px_rgba(220,38,38,0.4)] hover:shadow-[0_0_50px_rgba(220,38,38,0.6)]"
-              }
-            `}
-          >
-            {isSessionActive ? (
-              <>
-                <MicOff size={22} className="relative z-10" />
-                <span className="relative z-10">End Session</span>
-              </>
-            ) : (
-              <>
-                <Mic size={22} className="relative z-10 group-hover:scale-110 transition-transform" />
-                <span className="relative z-10">Start Session</span>
-              </>
-            )}
-            
-            {/* Pulsing effect for "Start" state */}
-            {!isSessionActive && (
-              <span className="absolute inset-0 rounded-full border-2 border-red-500 animate-ping opacity-20" />
-            )}
-          </motion.button>
-          
           <button
             onClick={() => {
               const newShow = !showLiveLens;

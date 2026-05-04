@@ -13,12 +13,22 @@ export function processCommand(command: string): {
     !lowerCmd.includes("spotify")
   ) {
     let website = openMatch[1].trim().replace(/\s+/g, "");
-    if (!website.includes(".")) {
-      website += ".com";
+    let url = "";
+
+    if (website.startsWith("http://") || website.startsWith("https://")) {
+      url = website;
+    } else if (website.startsWith("www.")) {
+      url = `https://${website}`;
+    } else {
+      if (!website.includes(".")) {
+        website += ".com";
+      }
+      url = `https://www.${website}`;
     }
+
     return {
       action: `Opening ${openMatch[1]} for you, ugh.`,
-      url: `https://www.${website}`,
+      url: url,
       isBrowserAction: true,
     };
   }
