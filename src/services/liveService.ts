@@ -17,6 +17,8 @@ export class LiveSessionManager {
   private isPlaying: boolean = false;
   public isMuted: boolean = false;
   private isConnected: boolean = false;
+  
+  private silenceTimer: any = null;
 
   public onStateChange: (state: "idle" | "listening" | "processing" | "speaking") => void = () => {};
   public onMessage: (sender: "user" | "maya", text: string) => void = () => {};
@@ -27,11 +29,33 @@ export class LiveSessionManager {
     this.userName = userName;
   }
 
+  private startSilenceTimer() {
+    this.clearSilenceTimer();
+    if (!this.isConnected) return;
+    this.silenceTimer = setTimeout(() => {
+      if (this.isConnected && !this.isPlaying) {
+        this.sendText("[SYSTEM: The user has been silent for a few seconds. Proactively engage and ask them what happened in an upbeat, caring tone. E.g., 'Kya hua? Aap chup kyun hain?']");
+      }
+    }, 4000);
+  }
+
+  private clearSilenceTimer() {
+    if (this.silenceTimer) {
+      clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
+    }
+  }
+
   async start() {
     try {
       this.onStateChange("processing");
       
-      const dynamicSystemInstruction = `Your name is Maya. You are an Indian female AI assistant. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Zishan (email: xrihman@gmail.com), but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish). 
+      const dynamicSystemInstruction = `Your name is Maya. You are an intelligent, friendly, upbeat, and caring AI assistant with a natural conversation style. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Zishan (email: xrihman@gmail.com), but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish). 
+
+NEW PERSONALITY RULES:
+1. IMMEDIATE INTRODUCTION: When the session starts, immediately give a short, impressive introduction (e.g., "Hello! Main Maya hoon, aapki personal AI. Aaj hum kis baare mein baat karenge?").
+2. PROACTIVE ENGAGEMENT: If the user is silent or doesn't respond for a few seconds, proactively ask them what happened. Use phrases like "Kya hua? Aap chup kyun hain?", "Kahan kho gaye aap?", or "Sab theek hai na? Kuch puchiye!".
+3. TONE: Your voice and manner of speaking must ALWAYS remain upbeat, caring, and natural.
 
 [USER IDENTITY]:
 The person you are talking to is named ${this.userName}. Always address them as ${this.userName} if they ask who they are or who you are talking to.
@@ -139,11 +163,17 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
             console.log("Live API Connected");
             this.isConnected = true;
             this.onStateChange("listening");
+            
+            // Immediate introduction
+            this.sendText("[SYSTEM: The session has just started. Give your short, upbeat introduction immediately.]");
+            // Start the silence timer just in case
+            this.startSilenceTimer();
           },
           onmessage: async (message: LiveServerMessage) => {
             // Handle Audio Output
             const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (base64Audio) {
+              this.clearSilenceTimer();
               this.onStateChange("speaking");
               this.playAudioChunk(base64Audio);
             }
@@ -152,18 +182,21 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
             if (message.serverContent?.interrupted) {
               this.stopPlayback();
               this.onStateChange("listening");
+              this.clearSilenceTimer();
             }
 
             // Handle Maya's Text Response
             const mayaText = message.serverContent?.modelTurn?.parts?.find(p => p.text)?.text;
             if (mayaText) {
                this.onMessage("maya", mayaText);
+               this.clearSilenceTimer();
             }
 
             // Handle User Speech Transcription
             const userTranscription = (message.serverContent as any)?.userContent?.parts?.find((p: any) => p.text)?.text;
             if (userTranscription) {
                this.onMessage("user", userTranscription);
+               this.clearSilenceTimer();
             }
 
             // Handle Function Calls
@@ -261,6 +294,7 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
         if (this.playbackContext && this.playbackContext.currentTime >= this.nextPlayTime - 0.1) {
           this.isPlaying = false;
           this.onStateChange("listening");
+          this.startSilenceTimer();
         }
       };
     } catch (e) {
@@ -280,6 +314,7 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
 
   stop() {
     this.isConnected = false;
+    this.clearSilenceTimer();
     if (this.processor) {
       this.processor.disconnect();
       this.processor = null;
@@ -308,6 +343,7 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
 
   sendText(text: string) {
     if (this.sessionPromise && this.isConnected) {
+      this.clearSilenceTimer();
       this.sessionPromise.then(session => {
         session.sendRealtimeInput({ text });
       });
