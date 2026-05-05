@@ -1,9 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Share Tech Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-maya-bg: #001B2E;
+  --color-maya-accent: #00F0FF;
+  --color-maya-secondary: #0066FF;
+}
+
+:root {
+  --maya-bg: #001B2E;
+  --maya-accent: #00F0FF;
+  --maya-secondary: #0066FF;
 }
 
 html, body, #root {
@@ -12,60 +21,122 @@ html, body, #root {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: #02080b;
+  background-color: var(--maya-bg);
+  color: white;
+  font-family: var(--font-sans);
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
+/* Technical Grid Background */
+.grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+  mask-image: radial-gradient(circle at center, black, transparent 80%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.scanning-line {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--maya-accent), transparent);
+  opacity: 0.15;
+  top: -5%;
+  animation: scan 10s linear infinite;
+  z-index: 1;
+}
+
+@keyframes scan {
+  0% { top: -5%; }
+  100% { top: 105%; }
+}
+
+/* HUD Components */
+.glass-panel {
+  background: rgba(0, 27, 46, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 240, 255, 0.1);
+  box-shadow: 0 0 40px rgba(0, 102, 255, 0.1);
+}
+
+.maya-core-ring {
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 50%;
+  position: absolute;
+}
+
+.rotate-cw {
+  animation: rotate-cw 30s linear infinite;
+}
+
+.rotate-ccw {
+  animation: rotate-ccw 40s linear infinite;
+}
+
+@keyframes rotate-cw {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes rotate-ccw {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { filter: drop-shadow(0 0 15px rgba(0, 240, 255, 0.3)); opacity: 0.8; }
+  50% { filter: drop-shadow(0 0 35px rgba(0, 240, 255, 0.6)); opacity: 1; }
+}
+
+/* Floating Particles */
+.particle-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: var(--maya-accent);
+  border-radius: 50%;
+  opacity: 0.2;
+  filter: blur(1px);
+}
+
+/* Waveform Style */
+.wave-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 50px;
+}
+
+.wave-bar {
+  width: 4px;
+  height: 10px;
+  background: var(--maya-accent);
+  border-radius: 2px;
+  transition: height 0.1s ease;
+}
+
+/* Scrollbar Hide */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
-
-/* Hide scrollbar for IE, Edge and Firefox */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
-
-/* Glassmorphism Styles */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 60, 60, 0.15);
-  box-shadow: 0 0 40px rgba(255, 0, 0, 0.2);
-}
-
-.glass-bubble-maya {
-  background: linear-gradient(135deg, rgba(255, 0, 0, 0.15) 0%, rgba(100, 0, 0, 0.05) 100%);
-  border-left: 2px solid var(--maya-red);
-  backdrop-filter: blur(8px);
-}
-
-.glass-bubble-user {
-  background: rgba(255, 255, 255, 0.05);
-  border-right: 2px solid rgba(255,255,255,0.3);
-  backdrop-filter: blur(8px);
-}
-
-/* Wave Animation */
-.wave-span {
-  display: inline-block;
-  width: 4px;
-  height: 10px;
-  margin: 2px;
-  background: red;
-  animation: wave 1s infinite ease-in-out;
-}
-
-.wave-span:nth-child(2) { animation-delay: 0.2s; }
-.wave-span:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes wave {
-  0%, 100% { height: 10px; }
-  50% { height: 25px; }
-}
-
-:root {
-  --maya-red: #ff0000;
-  --maya-glow: rgba(255, 0, 0, 0.6);
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

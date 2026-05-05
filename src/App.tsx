@@ -379,43 +379,45 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Background radial gradient */}
-      <div className="absolute inset-0 w-full h-full bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)] z-0" />
+      {/* Background Elements */}
+      <div className="grid-bg" />
+      <div className="scanning-line" />
+      <ParticleBackground />
 
       {/* About/How to use Dialog */}
       <AnimatePresence>
         {showAboutDialog && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-sans">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-[#001B2E]/90 backdrop-blur-xl font-sans">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#0a0a0a] border border-white/10 p-6 md:p-8 rounded-2xl max-w-lg w-full text-white shadow-2xl relative"
+              className="bg-[#001b2e] border border-[#00f0ff]/20 p-6 md:p-8 rounded-2xl max-w-lg w-full text-white shadow-[0_0_50px_rgba(0,240,255,0.1)] relative"
             >
               <button 
                 onClick={() => setShowAboutDialog(false)}
-                className="absolute top-4 right-4 p-2 text-white/50 hover:text-white rounded-full hover:bg-white/5 transition-colors"
+                className="absolute top-4 right-4 p-2 text-[#00f0ff]/50 hover:text-[#00f0ff] rounded-full hover:bg-[#00f0ff]/5 transition-colors"
                 title="Close"
               >
                 <X size={20} />
               </button>
-              <h2 className="text-2xl font-bold mb-4 text-red-500">About Maya AI</h2>
-              <div className="space-y-4 text-white/80 text-sm md:text-base leading-relaxed">
-                <p>Maya AI ek advanced personal assistant hai jo aapke sawalon ka jawab dene aur tasks asan karne ke liye design ki gayi hai.</p>
-                <h3 className="text-lg font-semibold text-white mt-4 border-b border-white/10 pb-2">Kaise Use Karein?</h3>
-                <ul className="list-disc pl-5 space-y-3">
-                  <li><strong className="text-white">Voice Mode:</strong> "Start Session" dabayein aur bolna shuru karein. Maya aapki aawaz sunkar automatically jawab degi.</li>
-                  <li><strong className="text-white">Text Mode:</strong> Keyboard icon par click karein aur apna message type karke bhejenge to Maya bol kar jawab degi.</li>
-                  <li><strong className="text-white">Browser Actions:</strong> Aap Maya ko web pages open karne (e.g., "Open YouTube") ya themes change karne bol sakte hain.</li>
-                  <li><strong className="text-white">Clear History:</strong> Delete icon (trash) daba kar aap purani chat bhoolne ko keh sakte hain.</li>
+              <h2 className="text-2xl font-bold mb-4 text-[#00f0ff] tracking-tight">System Protocol: MAYA</h2>
+              <div className="space-y-4 text-white/80 text-sm md:text-base leading-relaxed font-mono">
+                <p>{">"} Maya AI is an advanced neural interface designed for seamless interaction and task automation.</p>
+                <h3 className="text-lg font-semibold text-[#00f0ff] mt-4 border-b border-[#00f0ff]/10 pb-2">Operational Guidelines</h3>
+                <ul className="list-disc pl-5 space-y-3 opacity-90">
+                  <li><strong className="text-[#00f0ff]">Neutral Voice:</strong> "Start Talking" initiates a secure real-time neural link.</li>
+                  <li><strong className="text-[#00f0ff]">Data Input:</strong> Use the terminal interface for text commands.</li>
+                  <li><strong className="text-[#00f0ff]">Visual Link:</strong> Activate the camera for visual situational awareness.</li>
+                  <li><strong className="text-[#00f0ff]">Reset:</strong> Use the system wipe (trash icon) to clear local cache.</li>
                 </ul>
               </div>
               <div className="mt-8 flex justify-end">
                 <button
                   onClick={() => setShowAboutDialog(false)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-medium transition-colors border border-red-500/50"
+                  className="bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] px-6 py-2 rounded-lg font-medium transition-all border border-[#00f0ff]/30"
                 >
-                  Super! Done
+                  Confirm Awareness
                 </button>
               </div>
             </motion.div>
@@ -426,32 +428,32 @@ export default function App() {
       {/* Privacy Policy Dialog */}
       <AnimatePresence>
         {showPrivacyDialog && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-sans">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-[#001B2E]/90 backdrop-blur-xl font-sans">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#0a0a0a] border border-white/10 p-6 md:p-8 rounded-2xl max-w-lg w-full text-white shadow-2xl relative"
+              className="bg-[#001b2e] border border-[#00f0ff]/20 p-6 md:p-8 rounded-2xl max-w-lg w-full text-white shadow-[0_0_50px_rgba(0,240,255,0.1)] relative"
             >
               <button 
                 onClick={() => setShowPrivacyDialog(false)}
-                className="absolute top-4 right-4 p-2 text-white/50 hover:text-white rounded-full hover:bg-white/5 transition-colors"
+                className="absolute top-4 right-4 p-2 text-[#00f0ff]/50 hover:text-[#00f0ff] rounded-full hover:bg-[#00f0ff]/5 transition-colors"
                 title="Close"
               >
                 <X size={20} />
               </button>
-              <h2 className="text-2xl font-bold mb-4 text-red-500">Privacy Policy</h2>
-              <div className="space-y-4 text-white/80 text-sm md:text-base leading-relaxed">
-                <p>Maya AI par hum aapki privacy ka samman karte hain. Hum aapka koi bhi personal data bina ijazat ke save nahi karte.</p>
-                <p>Hamari site par Google AdSense ke ads dikhaye jate hain jo cookies ka istemal karte hain taaki aapko behtar ads dikhaye ja sakein.</p>
-                <p>Aapki voice recording aur chat history sirf aapke personal browser storage aur app functionality ke liye istemal hoti hai, and servers par permanently store nahi ki jaati hai (jab tak specify na ho).</p>
+              <h2 className="text-2xl font-bold mb-4 text-[#00f0ff] tracking-tight">Security Protocol</h2>
+              <div className="space-y-4 text-white/80 text-sm md:text-base leading-relaxed font-mono">
+                <p>{">"} Neural link encryption active. User privacy is a priority within the MAYA environment.</p>
+                <p>{">"} No personal biometric data is stored outside the local neural core. External nodes (AdSense) may use cookies for contextual awareness.</p>
+                <p>{">"} Current historical logs are stored strictly within the user's primary browser storage device.</p>
               </div>
               <div className="mt-8 flex justify-end">
                 <button
                   onClick={() => setShowPrivacyDialog(false)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-medium transition-colors border border-red-500/50"
+                  className="bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] px-6 py-2 rounded-lg font-medium transition-all border border-[#00f0ff]/30"
                 >
-                  Got it
+                  Acknowledge
                 </button>
               </div>
             </motion.div>
@@ -462,142 +464,142 @@ export default function App() {
       {/* Header */}
       <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-6 py-4 md:px-12 md:py-6">
         <div className="flex items-center gap-3">
-          {!logoError ? (
-            <img 
-              src="/maya_logo.png" 
-              alt="Maya AI" 
-              className="h-10 md:h-12 w-auto object-contain drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]"
-              onError={() => setLogoError(true)}
-            />
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-red-600 to-black border border-red-500/50 flex items-center justify-center font-bold text-sm text-red-100 shadow-[0_0_10px_rgba(220,38,38,0.5)]">
-                M
-              </div>
-              <h1 className="text-xl font-serif font-medium tracking-wide opacity-90">Maya</h1>
-            </div>
-          )}
+          <div className="w-10 h-10 rounded-full bg-[#00f0ff]/5 border border-[#00f0ff]/20 flex items-center justify-center font-bold text-lg text-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.2)]">
+            M
+          </div>
+          <div className="hidden md:block">
+            <h1 className="text-xl font-bold tracking-[0.2em] text-[#00f0ff]">MAYA</h1>
+            <p className="text-[10px] font-mono text-[#00f0ff]/40 uppercase tracking-widest">Neural OS v8.2.0</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowNameModal(true)}
-            className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10 flex items-center gap-2 px-3"
-            title="Set your name"
+            className="p-2 rounded-lg bg-[#00f0ff]/5 hover:bg-[#00f0ff]/10 text-[#00f0ff]/70 hover:text-[#00f0ff] transition-all border border-[#00f0ff]/10 flex items-center gap-2 px-3"
+            title="Set user identity"
           >
-            <User size={18} className="opacity-70" />
-            <span className="text-xs font-medium opacity-70 hidden sm:inline">{userName}</span>
+            <User size={16} />
+            <span className="text-[10px] font-mono uppercase tracking-wider hidden sm:inline">{userName}</span>
           </button>
           <button
             onClick={() => setShowPrivacyDialog(true)}
-            className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
-            title="Privacy Policy"
+            className="p-2 rounded-lg bg-[#00f0ff]/5 hover:bg-[#00f0ff]/10 text-[#00f0ff]/70 transition-all border border-[#00f0ff]/10"
+            title="Security Protocols"
           >
-            <Shield size={18} className="opacity-70" />
+            <Shield size={16} />
           </button>
           <button
             onClick={() => setShowAboutDialog(true)}
-            className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
-            title="How to use Maya"
+            className="p-2 rounded-lg bg-[#00f0ff]/5 hover:bg-[#00f0ff]/10 text-[#00f0ff]/70 transition-all border border-[#00f0ff]/10"
+            title="System Info"
           >
-            <Info size={18} className="opacity-70" />
+            <Info size={16} />
           </button>
           {messages.length > 0 && (
             <button
               onClick={clearHistory}
-              className="p-2 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-white/10"
-              title="Clear Chat History"
+              className="p-2 rounded-lg bg-red-500/5 hover:bg-red-500/10 text-red-400/70 transition-all border border-red-500/10"
+              title="System Wipe"
             >
-              <Trash2 size={18} className="opacity-70" />
+              <Trash2 size={16} />
             </button>
           )}
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
-            title={isMuted ? "Unmute" : "Mute"}
+            className="p-2 rounded-lg bg-[#00f0ff]/5 hover:bg-[#00f0ff]/10 text-[#00f0ff]/70 transition-all border border-[#00f0ff]/10"
+            title={isMuted ? "Audio Offline" : "Audio Online"}
           >
             {isMuted ? (
-              <VolumeX size={18} className="opacity-70" />
+              <VolumeX size={16} />
             ) : (
-              <Volume2 size={18} className="opacity-70" />
+              <Volume2 size={16} />
             )}
           </button>
         </div>
       </header>
-      {/* Main Content - Visualizer & Chat */}
-      <main className="absolute inset-0 flex flex-row items-center justify-between w-full h-full z-10 overflow-hidden pt-20 pb-24 px-4 md:px-12 pointer-events-none">
+
+      {/* Main HUD Interface */}
+      <main className="absolute inset-0 flex flex-col md:flex-row items-center justify-between w-full h-full z-10 overflow-hidden pt-24 pb-32 px-6 md:px-12 pointer-events-none">
         
-        {/* Left Column: Maya Status */}
-        <div className="flex w-[30%] lg:w-[25%] h-full flex-col justify-center gap-4 z-10">
-          <div className="h-6">
-            <AnimatePresence>
-              {appState === "processing" && (
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="flex items-center gap-2 text-cyan-300/80 text-sm md:text-base italic font-serif"
-                >
-                  <Loader2 size={16} className="animate-spin" />
-                  Replying...
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        {/* Center Visualizer & Status Area */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-full flex justify-center z-10 pointer-events-auto">
-            <div className="text-center p-8 rounded-[20px] bg-white/5 backdrop-blur-md shadow-[0_0_40px_rgba(255,0,0,0.2)] border border-white/10 w-[90%] max-w-sm">
-              <motion.img 
-                animate={{ y: [-10, 10, -10] }}
-                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                src="https://i.postimg.cc/ZnRXSx4Z/Adobe-Express-file.png" 
-                alt="Maya AI" 
-                className="w-56 mx-auto mb-5 z-10 relative drop-shadow-[0_0_20px_rgba(255,0,0,0.6)]"
-              />
-              
-              <div className="text-3xl font-semibold mb-2 font-sans tracking-wide">Maya AI</div>
-              <div className="text-sm opacity-70 mb-5 font-sans">
-                {appState === 'speaking' ? 'Speaking...' : appState === 'listening' ? 'Listening...' : appState === 'processing' ? 'Thinking...' : 'Idle...'}
+        {/* Left HUD: System Status */}
+        <div className="hidden md:flex w-64 flex-col gap-6 pointer-events-auto">
+          <HUDPanel title="NEURAL_LOAD">
+            <div className="flex flex-col gap-3">
+              <div className="flex justify-between font-mono text-[10px] text-[#00f0ff]/70">
+                <span>SYNAPTIC_PULSE</span>
+                <span className="text-[#00f0ff]">98.2%</span>
               </div>
-
-              {/* Wave */}
-              <div className="flex items-center justify-center h-8 mx-auto" style={{ gap: '4px' }}>
-                {appState !== 'idle' && (
-                  <>
-                     <span className="wave-span" style={{animationDelay: '0s'}}></span>
-                     <span className="wave-span" style={{animationDelay: '0.2s'}}></span>
-                     <span className="wave-span" style={{animationDelay: '0.4s'}}></span>
-                  </>
-                )}
+              <div className="w-full h-1 bg-[#00f0ff]/10 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: "0%" }}
+                  animate={{ width: "98.2%" }}
+                  className="h-full bg-[#00f0ff]"
+                />
+              </div>
+              <div className="flex justify-between font-mono text-[10px] text-[#00f0ff]/70">
+                <span>CORE_TEMP</span>
+                <span className="text-[#00f0ff]">32°C</span>
+              </div>
+              <div className="w-full h-1 bg-[#00f0ff]/10 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: "0%" }}
+                  animate={{ width: "45%" }}
+                  className="h-full bg-cyan-400"
+                />
               </div>
             </div>
-          </div>
+          </HUDPanel>
+
+          <AnimatePresence>
+            {appState === "processing" && (
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="flex items-center gap-3 p-4 bg-[#00f0ff]/5 border border-[#00f0ff]/20 rounded-lg"
+              >
+                <Loader2 size={16} className="text-[#00f0ff] animate-spin" />
+                <span className="text-xs font-mono text-[#00f0ff] uppercase tracking-widest">Analyzing Neural Stream...</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Right Column: User Status */}
-        <div className="flex w-[30%] lg:w-[25%] h-full flex-col justify-center gap-4 z-10">
-          <div className="h-6 flex justify-end">
-            <AnimatePresence>
-              {appState === "listening" && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="flex items-center gap-2 text-red-300/80 text-sm md:text-base italic"
-                >
-                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  Listening...
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+        {/* Center: AI CORE */}
+        <div className="flex-1 h-full flex items-center justify-center relative pointer-events-auto">
+          <AICore state={appState} />
+        </div>
+
+        {/* Right HUD: Memory Trace */}
+        <div className="hidden md:flex w-64 flex-col gap-6 pointer-events-auto">
+          <HUDPanel title="MEMORY_TRACE">
+             <div className="font-mono text-[10px] text-[#00f0ff]/60 leading-relaxed overflow-hidden max-h-48 scrollbar-hide">
+                {userMemory ? (
+                  <p className="line-clamp-6 whitespace-pre-wrap lowercase">{">"} {userMemory}</p>
+                ) : (
+                  <p className="opacity-40 italic">{">"} current memory state: null</p>
+                )}
+             </div>
+          </HUDPanel>
+
+          <AnimatePresence>
+            {appState === "listening" && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="flex items-center gap-3 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg justify-end"
+              >
+                <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest">Vocal Stream Passive</span>
+                <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </main>
 
-      {/* Controls */}
-      <footer className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-center pb-12 md:pb-16 z-20 shrink-0 gap-6">
+      {/* Floating Interaction Controls */}
+      <footer className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-center pb-10 md:pb-12 z-20 shrink-0 gap-6">
         <AnimatePresence>
           {showTextInput && (
             <motion.form 
@@ -605,23 +607,23 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               onSubmit={handleTextSubmit}
-              className="w-full max-w-md flex items-center gap-2 bg-black/60 border border-red-500/30 rounded-full p-2 pl-5 backdrop-blur-2xl shadow-[0_0_50px_rgba(220,38,38,0.3)] mb-4 z-[100]"
+              className="w-full max-w-lg flex items-center gap-2 bg-[#001B2E]/60 border border-[#00f0ff]/20 rounded-xl p-2 pl-6 backdrop-blur-2xl shadow-[0_0_50px_rgba(0,240,255,0.1)] mb-4 z-[100]"
             >
               <input 
                 type="text"
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Type your message..."
-                className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-red-100/30 text-sm md:text-base font-medium"
+                placeholder="Neural Input Terminal..."
+                className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-[#00f0ff]/30 text-sm md:text-base font-mono"
                 autoFocus
                 autoComplete="off"
               />
               <motion.button 
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 type="submit"
                 disabled={!textInput.trim()}
-                className="p-3 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:hover:bg-red-600 transition-all shadow-[0_0_20px_rgba(220,38,38,0.5)]"
+                className="p-3 rounded-lg bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] disabled:opacity-30 transition-all border border-[#00f0ff]/20"
               >
                 <Send size={20} />
               </motion.button>
@@ -648,65 +650,58 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-2xl px-4">
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-2xl px-6">
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={toggleListening}
             className={`
-              relative px-10 py-5 rounded-full font-semibold text-lg transition-all duration-300 flex-1 w-full
+              relative px-10 py-5 rounded-2xl font-bold text-lg transition-all duration-500 flex-1 w-full border uppercase tracking-[0.2em]
               ${
                 isSessionActive
-                  ? "bg-white/10 text-red-100 border border-red-500/30 shadow-[0_0_20px_rgba(220,38,38,0.1)] hover:bg-white/20"
-                  : "bg-gradient-to-r from-[#ff3b3b] to-[#ff6b6b] text-white shadow-[0_0_20px_rgba(255,0,0,0.4)] hover:shadow-[0_0_30px_rgba(255,0,0,0.7)]"
+                  ? "bg-[#00f0ff]/5 text-[#00f0ff] border-[#00f0ff]/30 shadow-[0_0_30px_rgba(0,240,255,0.1)]"
+                  : "bg-[#00f0ff]/10 text-white border-[#00f0ff]/40 shadow-[0_0_40px_rgba(0,240,255,0.2)] hover:bg-[#00f0ff]/20"
               }
             `}
           >
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center justify-center gap-4">
               {isSessionActive ? (
                 <>
-                  <MicOff size={24} />
-                  Stop Talking
+                  <div className="w-2 h-2 rounded-full bg-[#00f0ff] animate-pulse" />
+                  Neural Link Established
                 </>
               ) : (
                 <>
-                  <Mic size={24} />
-                  Start Talking
+                  <Mic size={24} className="text-[#00f0ff]" />
+                  Initiate Neural Link
                 </>
               )}
             </div>
           </motion.button>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
-            <button
+            <ControlButton 
+              active={showLiveLens} 
               onClick={() => {
                 const newShow = !showLiveLens;
                 setShowLiveLens(newShow);
-                if (newShow && !isSessionActive) {
-                  toggleListening();
-                }
+                if (newShow && !isSessionActive) toggleListening();
               }}
-              className={`p-4 rounded-full border transition-all shadow-xl group flex-shrink-0 ${showLiveLens ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-              title="Video Call (Voice + Camera)"
-            >
-              <Video size={24} className={showLiveLens ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
-            </button>
-
-            <button
+              icon={<Video size={20} />}
+              label="VISUAL_LINK"
+            />
+            <ControlButton 
+              active={showCamera} 
               onClick={() => setShowCamera(!showCamera)}
-              className={`p-4 rounded-full border transition-all shadow-xl group flex-shrink-0 ${showCamera ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-              title="Send a photo"
-            >
-              <Camera size={24} className={showCamera ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
-            </button>
-
-            <button
+              icon={<Camera size={20} />}
+              label="SNAP_MODULE"
+            />
+            <ControlButton 
+              active={showTextInput} 
               onClick={() => setShowTextInput(!showTextInput)}
-              className={`p-4 rounded-full border transition-all shadow-xl group flex-shrink-0 ${showTextInput ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-              title="Type a message"
-            >
-              <Keyboard size={24} className={showTextInput ? 'text-white' : 'opacity-70 group-hover:opacity-100'} />
-            </button>
+              icon={<Keyboard size={20} />}
+              label="TERMINAL"
+            />
           </div>
         </div>
       </footer>
@@ -720,6 +715,166 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// Sub-components for futuristic HUD
+
+function HUDPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="glass-panel p-4 rounded-xl relative overflow-hidden group">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-1 h-3 bg-[#00f0ff]" />
+        <h3 className="text-[10px] font-mono text-[#00f0ff] uppercase tracking-[0.3em] font-bold">{title}</h3>
+      </div>
+      {children}
+      <div className="absolute top-0 right-0 p-1 opacity-20">
+        <div className="w-4 h-4 border-t border-r border-[#00f0ff]" />
+      </div>
+      <div className="absolute bottom-0 left-0 p-1 opacity-20">
+        <div className="w-4 h-4 border-b border-l border-[#00f0ff]" />
+      </div>
+    </div>
+  );
+}
+
+function ControlButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        flex flex-col items-center gap-2 p-4 rounded-xl border transition-all group relative overflow-hidden
+        ${active ? 'bg-[#00f0ff]/20 border-[#00f0ff]/50' : 'bg-[#00f0ff]/5 border-[#00f0ff]/10 hover:bg-[#00f0ff]/10'}
+      `}
+      title={label}
+    >
+      <div className={`${active ? 'text-[#00f0ff]' : 'text-[#00f0ff]/50 group-hover:text-[#00f0ff]'} transition-colors`}>
+        {icon}
+      </div>
+      <span className={`text-[8px] font-mono uppercase tracking-[0.2em] ${active ? 'text-[#00f0ff]' : 'text-[#00f0ff]/30'}`}>
+        {label}
+      </span>
+      {active && (
+        <motion.div 
+          layoutId="active-glow"
+          className="absolute inset-0 bg-[#00f0ff]/5 pointer-events-none"
+        />
+      )}
+    </button>
+  );
+}
+
+function AICore({ state }: { state: AppState }) {
+  const isInteracting = state !== 'idle';
+  
+  return (
+    <div className="relative w-80 h-80 flex items-center justify-center">
+      {/* Outer Thin Ring */}
+      <div className="maya-core-ring w-full h-full rotate-cw border-[#00f0ff]/10 border-dashed" />
+      
+      {/* Middle Segmented Arc Layer */}
+      <motion.div 
+        animate={{ rotate: isInteracting ? 360 : 0 }}
+        transition={{ duration: isInteracting ? 4 : 20, repeat: Infinity, ease: "linear" }}
+        className="absolute w-[85%] h-[85%]"
+      >
+        <svg viewBox="0 0 100 100" className="w-full h-full opacity-40">
+          <circle cx="50" cy="50" r="48" fill="none" stroke="#00f0ff" strokeWidth="0.5" strokeDasharray="10 20" />
+        </svg>
+      </motion.div>
+
+      {/* Rotating Data Arcs */}
+      <motion.div 
+        animate={{ rotate: isInteracting ? -360 : 0 }}
+        transition={{ duration: isInteracting ? 2 : 30, repeat: Infinity, ease: "linear" }}
+        className="absolute w-[70%] h-[70%]"
+      >
+        <svg viewBox="0 0 100 100" className="w-full h-full text-[#00f0ff]">
+          <path d="M 50 2 A 48 48 0 0 1 98 50" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="opacity-60" />
+          <path d="M 50 98 A 48 48 0 0 1 2 50" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="opacity-60" />
+        </svg>
+      </motion.div>
+
+      {/* Inner Glow Core */}
+      <div className={`w-[45%] h-[45%] rounded-full bg-[#00f0ff]/5 border border-[#00f0ff]/40 flex flex-col items-center justify-center pulse-glow z-10 shadow-[0_0_50px_rgba(0,240,255,0.1)] relative`}>
+        {/* Core Text */}
+        <div className="text-2xl font-bold tracking-[0.3em] text-[#00f0ff] mb-1">MAYA</div>
+        
+        {/* State Label */}
+        <div className="text-[8px] font-mono uppercase tracking-widest text-[#00f0ff]/50">
+          {state}
+        </div>
+
+        {/* Circular Waveform (Only when speaking or listening) */}
+        {isInteracting && (
+           <div className="absolute inset-0 flex items-center justify-center">
+              <svg viewBox="0 0 100 100" className="w-full h-full opacity-40">
+                <motion.circle 
+                  cx="50" cy="50" r="40" 
+                  fill="none" stroke="#00f0ff" 
+                  strokeWidth="0.5"
+                  animate={{ r: [38, 42, 38], opacity: [0.2, 0.5, 0.2] }}
+                  transition={{ duration: 0.5, repeat: Infinity }}
+                />
+              </svg>
+           </div>
+        )}
+      </div>
+
+      {/* Reactive Bars */}
+      <div className="absolute inset-x-0 -bottom-12 flex justify-center h-8 gap-1 items-end pointer-events-none">
+        {state !== 'idle' && Array.from({ length: 12 }).map((_, i) => (
+          <motion.div
+            key={i}
+            animate={{ 
+              height: [8, Math.random() * 24 + 8, 8],
+              opacity: [0.3, 1, 0.3]
+            }}
+            transition={{ 
+              duration: 0.4, 
+              repeat: Infinity, 
+              delay: i * 0.05,
+              ease: "easeInOut"
+            }}
+            className="w-[3px] bg-[#00f0ff] rounded-full"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ParticleBackground() {
+  const particles = Array.from({ length: 40 });
+  
+  return (
+    <div className="particle-container">
+      {particles.map((_, i) => (
+        <motion.div
+          key={i}
+          className="particle"
+          initial={{ 
+            x: Math.random() * 100 + "vw", 
+            y: Math.random() * 100 + "vh",
+            scale: Math.random() * 0.5 + 0.5,
+            opacity: Math.random() * 0.2 + 0.1
+          }}
+          animate={{ 
+            y: ["-10vh", "110vh"],
+            x: [
+              Math.random() * 100 + "vw",
+              (Math.random() * 100 - 10) + "vw"
+            ]
+          }}
+          transition={{ 
+            duration: Math.random() * 20 + 20, 
+            repeat: Infinity, 
+            ease: "linear",
+            delay: -Math.random() * 20
+          }}
+        />
+      ))}
     </div>
   );
 }
