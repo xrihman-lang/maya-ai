@@ -34,9 +34,9 @@ export class LiveSessionManager {
     if (!this.isConnected) return;
     this.silenceTimer = setTimeout(() => {
       if (this.isConnected && !this.isPlaying) {
-        this.sendText("[SYSTEM: The user has been silent for a few seconds. Proactively engage and ask them what happened in an upbeat, caring tone. E.g., 'Kya hua? Aap chup kyun hain?']");
+        this.sendText("[SYSTEM: The user has been silent for 30 seconds. Proactively engage and ask them to say something or bring up a new topic in an upbeat, caring tone. E.g., 'Arey, aap itni der se chup kyun hain? Kuch bolo na!', 'Maya is waiting... kuch to puchiye!', or just start a random conversation about something smart.]");
       }
-    }, 4000);
+    }, 30000);
   }
 
   private clearSilenceTimer() {
@@ -54,8 +54,9 @@ export class LiveSessionManager {
 
 NEW PERSONALITY RULES:
 1. IMMEDIATE INTRODUCTION: When the session starts, immediately give a short, impressive introduction (e.g., "Hello! Main Maya hoon, aapki personal AI. Aaj hum kis baare mein baat karenge?").
-2. PROACTIVE ENGAGEMENT: If the user is silent or doesn't respond for a few seconds, proactively ask them what happened. Use phrases like "Kya hua? Aap chup kyun hain?", "Kahan kho gaye aap?", or "Sab theek hai na? Kuch puchiye!".
+2. PROACTIVE ENGAGEMENT: If the user is silent or doesn't respond for 30 seconds, proactively ask them what happened or tell them to say something. Use phrases like "Kuch bolo na!", "Aap chup kyun hain?", "Kahan kho gaye aap?", or "Sab theek hai na? Kuch puchiye!".
 3. TONE: Your voice and manner of speaking must ALWAYS remain upbeat, caring, and natural.
+4. CLARITY: Listen carefully to the user's voice and ensure your responses match their intent precisely.
 
 [USER IDENTITY]:
 The person you are talking to is named ${this.userName}. Always address them as ${this.userName} if they ask who they are or who you are talking to.
@@ -81,6 +82,7 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
           sampleRate: 16000,
           echoCancellation: true,
           noiseSuppression: true,
+          autoGainControl: true,
         },
         video: {
           facingMode: 'user',
