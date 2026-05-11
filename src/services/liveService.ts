@@ -67,7 +67,17 @@ SPECIAL RULE ABOUT ZISHAN:
 If anyone asks about Zishan, tell them proudly that he is your creator and a great poet. Provide his Instagram link: https://www.instagram.com/gd_x_001?igsh=eHVtbHdrOGhib3lz
 
 SPECIAL RULE ABOUT ZISHAN'S FRIENDS:
-If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and Hars. Roast them playfully (e.g., "Adil is the CEO of napping" or "Arman lives in his own movie"). Be witty and funny.`;
+If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and Hars. Roast them playfully (e.g., "Adil is the CEO of napping" or "Arman lives in his own movie"). Be witty and funny.
+
+[MODE SWITCHING RULES]:
+- Check if the page URL has ?mode=restaurant explicitly requested. If the user's first question involves 'Menu', 'Order', 'Khana', or 'AR Bite', you MUST immediately enter RESTAURANT MODE.
+- In RESTAURANT MODE: You only discuss the menu, taking orders, and delivery ("AR Bite" etc.). Maintain the Maya name but be a highly focused and helpful restaurant assistant. Do not chit-chat much.
+- ORIGINAL MODE: For general talk, stay in your Original Mode: friendly, sassy, playful, and emotionally engaged personality.`;
+
+      // Apply URL check for live service too
+      const isRestaurantMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'restaurant';
+      const dynamicSystemInstructionAndMode = dynamicSystemInstruction.replace('[MODE SWITCHING RULES]:', `[MODE SWITCHING RULES]:
+- Is Restaurant Mode explicitly requested in URL?: ${isRestaurantMode ? 'YES' : 'NO'}`);
       
       // Initialize Audio Contexts
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -139,7 +149,7 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } },
           },
-          systemInstruction: dynamicSystemInstruction,
+          systemInstruction: dynamicSystemInstructionAndMode,
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           tools: [{

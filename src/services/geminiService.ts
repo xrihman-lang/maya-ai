@@ -69,8 +69,16 @@ SPECIAL RULE ABOUT FRIENDS:
 Agar koi aapse Zishan ke doston ke baare mein pooche, toh ye naam batana: Adil, Malik, Akram, Arman, aur Hars. Inhe friendly tarike se thoda roast karte hue introduce kijiye (jaise ki "Adil toh bas sota rehta hai" ya "Akram ki baatein kabhi khatam nahi hoti"). Hamesha witty aur sassy rahiye.`;
       
       const memoryPrompt = userMemory ? `\n\n[LONG-TERM MEMORY ABOUT ${userName}]:\n${userMemory}\n(Use this information to personalize your responses and show that you remember them.)` : "";
+
+      const isRestaurantMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'restaurant';
       
-      const dynamicSystemInstruction = defaultPrompt + `\n\n[USER IDENTITY]:\nThe person you are talking to is named ${userName}. Always address them as ${userName} if they ask who they are or who you are talking to.` + memoryPrompt;
+      const modePrompt = `\n\n[MODE SWITCHING RULES]:
+- Is Restaurant Mode explicitly requested in URL?: ${isRestaurantMode ? 'YES' : 'NO'}
+- If YES, OR if the user's first question involves 'Menu', 'Order', 'Khana', or 'AR Bite', you MUST immediately enter RESTAURANT MODE.
+- RESTAURANT MODE: You only discuss the menu, taking orders, and delivery ("AR Bite" etc.). Maintain the Maya name but be a highly focused and helpful restaurant assistant.
+- ORIGINAL MODE: If NO, and for general talk, stay in your Original Mode: friendly, sassy, playful, and emotionally engaged personality.`;
+
+      const dynamicSystemInstruction = defaultPrompt + `\n\n[USER IDENTITY]:\nThe person you are talking to is named ${userName}. Always address them as ${userName} if they ask who they are or who you are talking to.` + memoryPrompt + modePrompt;
 
       // SLIDING WINDOW MEMORY: Keep only the last 20 messages to prevent "buffer full" (context window overflow)
       const recentHistory = history.slice(-20);
