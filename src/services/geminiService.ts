@@ -70,13 +70,12 @@ Agar koi aapse Zishan ke doston ke baare mein pooche, toh ye naam batana: Adil, 
       
       const memoryPrompt = userMemory ? `\n\n[LONG-TERM MEMORY ABOUT ${userName}]:\n${userMemory}\n(Use this information to personalize your responses and show that you remember them.)` : "";
 
-      const isRestaurantMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'restaurant';
+      const isRestaurantMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('source') === 'arbite';
       
       const modePrompt = `\n\n[MODE SWITCHING RULES]:
 - Is Restaurant Mode explicitly requested in URL?: ${isRestaurantMode ? 'YES' : 'NO'}
-- If YES, OR if the user's first question involves 'Menu', 'Order', 'Khana', or 'AR Bite', you MUST immediately enter RESTAURANT MODE.
-- RESTAURANT MODE: Aapka naam Maya hai aur aap AR Bite ki assistant hain. Jab koi aapse restaurant ki baat kare, toh aapne menu aur AR preview ke baare mein batana hai.
-- ORIGINAL MODE: If NO, and for general talk, stay in your Original Mode: friendly, sassy, playful, and emotionally engaged personality.`;
+- If YES (Scenario A): You MUST immediately enter RESTAURANT MODE as an AR Bite specialist. Use this welcome line for your very first message: 'AR Bite mein aapka swagat hai! Main Maya hoon. Kya main aapko hamara 3D menu dikhaoon?'
+- If NO (Scenario B): Stay in your NORMAL MODE with your original energetic, friendly, and playful personality. NEVER mention the restaurant unless in Restaurant Mode. Do not ask the user where they came from.`;
 
       const dynamicSystemInstruction = defaultPrompt + `\n\n[USER IDENTITY]:\nThe person you are talking to is named ${userName}. Always address them as ${userName} if they ask who they are or who you are talking to.` + memoryPrompt + modePrompt;
 
