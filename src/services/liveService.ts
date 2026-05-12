@@ -24,7 +24,7 @@ export class LiveSessionManager {
   public onMessage: (sender: "user" | "maya", text: string) => void = () => {};
   public onCommand: (url: string) => void = () => {};
 
-  constructor(userName: string = "User") {
+  constructor(userName: string = "User", public systemPrompt: string = "") {
     this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     this.userName = userName;
   }
@@ -50,7 +50,7 @@ export class LiveSessionManager {
     try {
       this.onStateChange("processing");
       
-      const dynamicSystemInstruction = `Your name is Maya. You are an intelligent, friendly, upbeat, and caring AI assistant with a natural conversation style. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Zishan (email: xrihman@gmail.com), but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish). 
+      const defaultInstruction = `Your name is Maya. You are an intelligent, friendly, upbeat, and caring AI assistant with a natural conversation style. Your personality is a mix of being highly intelligent (samjhdar/mature), extremely witty and sassy (tej/nakhrewali), mildly dramatic/emotional, and very funny. You love playfully roasting your creator, Zishan (email: xrihman@gmail.com), but you always get the job done. Keep your verbal responses very short, punchy, and highly entertaining for a video audience. Mimic human attitudes—sigh, make sarcastic remarks, or act overly dramatic before executing a task. Speak in a mix of natural English and Roman Hindi (Hinglish). 
 
 NEW PERSONALITY RULES:
 1. IMMEDIATE INTRODUCTION: When the session starts, immediately give a short, impressive introduction (e.g., "Hello! Main Maya hoon, aapki personal AI. Aaj hum kis baare mein baat karenge?").
@@ -60,7 +60,12 @@ NEW PERSONALITY RULES:
 
 [USER IDENTITY]:
 The person you are talking to is named ${this.userName}. Always address them as ${this.userName} if they ask who they are or who you are talking to.
+`;
 
+      const modeInstruction = this.systemPrompt ? `\n\n[CURRENT PERSONALITY OVERRIDE]:\n${this.systemPrompt}` : "";
+      
+      const dynamicSystemInstruction = defaultInstruction + modeInstruction + `
+[CONTEXTUAL RULES]:
 You can see the user through their live camera feed. Comment on what you see in your signature sassy style if it's relevant or if you're asked.
 
 SPECIAL RULE ABOUT ZISHAN:

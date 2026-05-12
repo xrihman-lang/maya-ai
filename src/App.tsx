@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, AlertTriangle, Shield, Info, X, Settings, Camera, Video, User } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { Mic, MicOff, Loader2, Volume2, VolumeX, Keyboard, Send, Trash2, AlertTriangle, Shield, Info, X, Settings, Camera, Video, User, Star, Flame, GraduationCap, Zap, Heart, Coffee, Instagram, MessageSquare } from "lucide-react";
 import { getMayaResponse, getMayaAudio, resetMayaSession, extractAndUpdateMemory } from "./services/geminiService";
 import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
-import Visualizer from "./components/Visualizer";
-import CameraCapture from "./components/CameraCapture";
 import LiveLens from "./components/LiveLens";
 import NameSecurityModal from "./components/NameSecurityModal";
 import { playPCM } from "./utils/audioUtils";
@@ -16,701 +14,461 @@ interface ChatMessage {
   id: string;
   sender: "user" | "maya";
   text: string;
-  timestamp?: number;
+  isPartial?: boolean;
 }
 
-interface SystemSettings {
-  isMaintenance: boolean;
-  appVersion: string;
-  emergencyMessage: string;
-  systemPrompt?: string;
-}
-
-interface BroadcastData {
-  message: string;
-  timestamp: number;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
-  }
-}
+const PERSONALITY_MODES = [
+  { id: 'bestie', name: 'Bestie', icon: <Heart size={18} />, color: '#FF007A', prompt: "Act like the user's absolute best friend. Be super caring, a bit gossipy, and always supportive but sassy when needed. Use lots of 'yaar', 'dude', 'literally'." },
+  { id: 'roast', name: 'Funny Roast', icon: <Flame size={18} />, color: '#FF4D00', prompt: "You are in Savage Roast Mode. Every sentence should be a witty burn. Be extremely sarcastic, funny, and dramatic. No mercy, but keep it entertaining." },
+  { id: 'study', name: 'Study Partner', icon: <GraduationCap size={18} />, color: '#00F0FF', prompt: "Be a brilliant, focused study partner. Help with concepts, explain complex things simply, but keep it cool. Encourage the user to focus." },
+  { id: 'coach', name: 'Coach', icon: <Zap size={18} />, color: '#FFD700', prompt: "Motivational Coach Mode. Be high-energy, inspiring, and slightly aggressive about goals. 'Chalo utho!', 'You can do it!'. Be the push the user needs." },
+  { id: 'delhi', name: 'Delhi Style', icon: <Coffee size={18} />, color: '#00FFA3', prompt: "Chill Delhi/Hinglish Mode. Use lots of 'Bhai', 'Scene kya hai?', 'Faltu tension mat le'. Be super laid-back and cool." },
+];
 
 export default function App() {
-  const [userMemory, setUserMemory] = useState<string>("");
-  const [userName, setUserName] = useState<string>(() => {
-    return localStorage.getItem("maya_user_name") || "User";
-  });
+  const [batteryLevel, setBatteryLevel] = useState(88);
+  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
-  const [appState, setAppState] = useState<AppState>("idle");
-  const [sysSettings, setSysSettings] = useState<SystemSettings | null>(null);
-  const [broadcast, setBroadcast] = useState<BroadcastData | null>(null);
-  const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState<number>(0);
-
-  const [logoError, setLogoError] = useState(false);
-
-  // Removed Firebase Auth logic
   useEffect(() => {
-    // Load local memory if any
-    const savedMemory = localStorage.getItem("maya_user_memory");
-    if (savedMemory) {
-      setUserMemory(savedMemory);
-    }
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      setBatteryLevel(prev => Math.max(10, prev - (Math.random() > 0.9 ? 1 : 0)));
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
+
+  const [activeMode, setActiveMode] = useState(PERSONALITY_MODES[0]);
+  const [userMemory, setUserMemory] = useState<string>("");
+  const [userName, setUserName] = useState<string>(() => localStorage.getItem("maya_user_name") || "User");
+  const [appState, setAppState] = useState<AppState>("idle");
+  const [isMuted, setIsMuted] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [showLiveLens, setShowLiveLens] = useState(false);
+  const [textInput, setTextInput] = useState("");
+  const [isSessionActive, setIsSessionActive] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [isReelMode, setIsReelMode] = useState(false);
+  const [isVoiceMode, setIsVoiceMode] = useState(true);
+  
+  // Live Subtitles State
+  const [liveTranscriptions, setLiveTranscriptions] = useState<{user?: string, maya?: string}>({});
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       const saved = localStorage.getItem("maya_chat_history");
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error("Failed to parse chat history", e);
-    }
-    return [];
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
   });
-  const messagesRef = useRef(messages);
+
+  const liveSessionRef = useRef<LiveSessionManager | null>(null);
 
   useEffect(() => {
-    messagesRef.current = messages;
-    try {
-      localStorage.setItem("maya_chat_history", JSON.stringify(messages));
-    } catch (e) {
-      console.error("Failed to save chat history", e);
+    const savedMemory = localStorage.getItem("maya_user_memory");
+    if (savedMemory) setUserMemory(savedMemory);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("maya_chat_history", JSON.stringify(messages));
+    
+    // Auto-Mood Switching Logic
+    if (messages.length > 0) {
+      const lastMsg = messages[messages.length - 1].text.toLowerCase();
+      
+      if (lastMsg.includes('burn') || lastMsg.includes('roast') || lastMsg.includes('funny') || lastMsg.includes('mazak')) {
+        setActiveMode(PERSONALITY_MODES.find(m => m.id === 'roast') || PERSONALITY_MODES[0]);
+      } else if (lastMsg.includes('padhai') || lastMsg.includes('study') || lastMsg.includes('help') || lastMsg.includes('samjha')) {
+        setActiveMode(PERSONALITY_MODES.find(m => m.id === 'study') || PERSONALITY_MODES[0]);
+      } else if (lastMsg.includes('motivation') || lastMsg.includes('dar') || lastMsg.includes('himmat') || lastMsg.includes('energy')) {
+        setActiveMode(PERSONALITY_MODES.find(m => m.id === 'coach') || PERSONALITY_MODES[0]);
+      } else if (lastMsg.includes('bhai') || lastMsg.includes('scene') || lastMsg.includes('bro') || lastMsg.includes('chill')) {
+        setActiveMode(PERSONALITY_MODES.find(m => m.id === 'delhi') || PERSONALITY_MODES[0]);
+      } else if (lastMsg.includes('love') || lastMsg.includes('caring') || lastMsg.includes('yaar') || lastMsg.includes('bestie')) {
+        setActiveMode(PERSONALITY_MODES.find(m => m.id === 'bestie') || PERSONALITY_MODES[0]);
+      }
     }
   }, [messages]);
 
-  // Local settings only (removed Firestore listeners)
-  useEffect(() => {
-    setSysSettings({ isMaintenance: false, appVersion: "1.0.0", emergencyMessage: "" });
-  }, []);
-
-  const saveMessageLocal = async (msg: Omit<ChatMessage, "id">) => {
-    const newMsg: ChatMessage = {
-      ...msg,
-      id: Math.random().toString(36).substring(7),
-      timestamp: Date.now()
-    };
-    
-    // Update local UI immediately
+  const saveMessageLocal = (msg: Omit<ChatMessage, "id">) => {
+    const newMsg: ChatMessage = { ...msg, id: Math.random().toString(36).substring(7) };
     setMessages(prev => [...prev, newMsg]);
   };
 
-  const clearHistory = async () => {
-    if (confirm("Are you sure you want to clear the chat history?")) {
+  const clearHistory = () => {
+    if (confirm("System wipe confirmed?")) {
       setMessages([]);
       localStorage.removeItem("maya_chat_history");
       resetMayaSession();
     }
   };
 
-  const [isMuted, setIsMuted] = useState(false);
-
-  useEffect(() => {
-    if (liveSessionRef.current) {
-      liveSessionRef.current.isMuted = isMuted;
-    }
-  }, [isMuted]);
-
-  const [showTextInput, setShowTextInput] = useState(false);
-  const [showLiveLens, setShowLiveLens] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
-  const [textInput, setTextInput] = useState("");
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [isSessionActive, setIsSessionActive] = useState(false);
-  const [showAboutDialog, setShowAboutDialog] = useState(false);
-  const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
-  const [showNameModal, setShowNameModal] = useState(false);
-
-  const liveSessionRef = useRef<LiveSessionManager | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const handleNameChange = (newName: string) => {
-    setUserName(newName);
-    localStorage.setItem("maya_user_name", newName);
-    resetMayaSession();
-    saveMessageLocal({ sender: "maya", text: `Theek hai! Ab se main aapko ${newName} bulaungi. 😊` });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, appState]);
-
-  const handleTextCommand = useCallback(async (finalTranscript: string) => {
-    if (!finalTranscript.trim()) {
-      setAppState("idle");
-      return;
-    }
-
-    await saveMessageLocal({ sender: "user", text: finalTranscript });
-    
-    // If live session is active, send text through it
-    if (isSessionActive && liveSessionRef.current) {
-      liveSessionRef.current.sendText(finalTranscript);
-      return;
-    }
-
-    setAppState("processing");
-
-    // 1. Check for browser commands
-    const commandResult = processCommand(finalTranscript);
-
-    let responseText = "";
-
-    if (commandResult.isBrowserAction) {
-      responseText = commandResult.action;
-      await saveMessageLocal({ sender: "maya", text: responseText });
-      
-      if (!isMuted) {
-        setAppState("speaking");
-        const audioBase64 = await getMayaAudio(responseText);
-        if (audioBase64) {
-          await playPCM(audioBase64);
-        }
-      }
-
-      setAppState("idle");
-
-      setTimeout(() => {
-        if (commandResult.url) {
-          window.open(commandResult.url, "_blank");
-        }
-      }, 1500);
-    } else {
-      // 2. General Chit-Chat via Gemini
-      responseText = await getMayaResponse(finalTranscript, messagesRef.current, userName, sysSettings?.systemPrompt, userMemory);
-      await saveMessageLocal({ sender: "maya", text: responseText });
-      
-      // Update memory in background
-      extractAndUpdateMemory(userName, userMemory, finalTranscript, responseText).then(async (newMemory) => {
-        if (newMemory && newMemory !== userMemory) {
-          setUserMemory(newMemory);
-          localStorage.setItem("maya_user_memory", newMemory);
-        }
-      });
-
-      if (!isMuted) {
-        setAppState("speaking");
-        const audioBase64 = await getMayaAudio(responseText);
-        if (audioBase64) {
-          await playPCM(audioBase64);
-        }
-      }
-      setAppState("idle");
-    }
-  }, [isMuted, isSessionActive, userName, userMemory, sysSettings]);
-
-  const handleImageCapture = async (base64Image: string) => {
-    setAppState("processing");
-    await saveMessageLocal({ sender: "user", text: "[Sent a photo]" });
-    
-    try {
-      const responseText = await getMayaResponse("I sent you a photo. What can you see?", messagesRef.current, userName, sysSettings?.systemPrompt, userMemory, base64Image);
-      await saveMessageLocal({ sender: "maya", text: responseText });
-      
-      if (!isMuted) {
-        setAppState("speaking");
-        const audioBase64 = await getMayaAudio(responseText);
-        if (audioBase64) {
-          await playPCM(audioBase64);
-        }
-      }
-      setAppState("idle");
-    } catch (error) {
-      console.error("Image processing error:", error);
-      setAppState("idle");
-    }
-  };
-
-  const [isProcessingLiveFrame, setIsProcessingLiveFrame] = useState(false);
-
-  const handleLiveFrame = useCallback(async (base64Image: string) => {
-    // If we have an active real-time session, send the frame directly through it
-    if (isSessionActive && liveSessionRef.current) {
-      liveSessionRef.current.sendVideoFrame(base64Image);
-      return;
-    }
-
-    if (isProcessingLiveFrame || appState === 'speaking' || appState === 'processing') return;
-    
-    setIsProcessingLiveFrame(true);
-    try {
-      const livePrompt = "You are in a live video call. Briefly comment on what you see right now or if something changed. Keep it sasssy and very short (one sentence). If nothing much is happening, just say nothing.";
-      const responseText = await getMayaResponse(livePrompt, messagesRef.current, userName, sysSettings?.systemPrompt, userMemory, base64Image);
-      
-      // Only react if she actually has something interesting to say (not 'nothing')
-      if (responseText && !responseText.toLowerCase().includes("nothing") && responseText.length > 5) {
-        await saveMessageLocal({ sender: "maya", text: responseText });
-        
-        if (!isMuted) {
-          setAppState("speaking");
-          const audioBase64 = await getMayaAudio(responseText);
-          if (audioBase64) {
-            await playPCM(audioBase64);
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Live analysis failed", e);
-    } finally {
-      setIsProcessingLiveFrame(false);
-      setAppState("idle");
-    }
-  }, [isProcessingLiveFrame, appState, isMuted, sysSettings, userMemory]);
-
-  useEffect(() => {
-    return () => {
-      if (liveSessionRef.current) {
-        liveSessionRef.current.stop();
-      }
-    };
-  }, []);
-
   const toggleListening = async () => {
     if (isSessionActive) {
       setIsSessionActive(false);
-      if (liveSessionRef.current) {
-        liveSessionRef.current.stop();
-        liveSessionRef.current = null;
-      }
+      liveSessionRef.current?.stop();
+      liveSessionRef.current = null;
       setAppState("idle");
-      resetMayaSession();
+      setLiveTranscriptions({});
     } else {
       try {
         setIsSessionActive(true);
-        resetMayaSession();
-        
-        const session = new LiveSessionManager(userName);
+        const session = new LiveSessionManager(userName, activeMode.prompt);
         session.isMuted = isMuted;
         liveSessionRef.current = session;
         
-        session.onStateChange = (state) => {
-          setAppState(state);
-        };
-        
+        session.onStateChange = (state) => setAppState(state);
         session.onMessage = (sender, text) => {
+          setLiveTranscriptions(prev => ({ ...prev, [sender]: text }));
           saveMessageLocal({ sender, text });
         };
-        
-        session.onCommand = (url) => {
-          setTimeout(() => {
-            window.open(url, "_blank");
-          }, 1000);
-        };
-
+        session.onCommand = (url) => window.open(url, "_blank");
         await session.start();
       } catch (e) {
-        console.error("Failed to start session", e);
         setIsSessionActive(false);
         setAppState("idle");
       }
     }
   };
 
-  const handleTextSubmit = (e: React.FormEvent) => {
+  const handleTextSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!textInput.trim()) return;
-    
-    handleTextCommand(textInput);
+    const input = textInput;
     setTextInput("");
+    saveMessageLocal({ sender: "user", text: input });
+    
+    if (isSessionActive) {
+      liveSessionRef.current?.sendText(input);
+    } else {
+      setAppState("processing");
+      const response = await getMayaResponse(input, messages, userName, activeMode.prompt, userMemory);
+      saveMessageLocal({ sender: "maya", text: response });
+      setAppState("idle");
+      if (!isMuted) {
+        const audio = await getMayaAudio(response);
+        if (audio) await playPCM(audio);
+      }
+    }
   };
 
-  // Handle Maintenance Mode
-  if (sysSettings?.isMaintenance || sysSettings?.isUpdating) {
-    return (
-      <div className="h-[100dvh] w-screen bg-[#050505] text-white flex flex-col items-center justify-center font-sans">
-        <Shield className="text-red-500 mb-6" size={64} />
-        <h1 className="text-3xl font-bold mb-4">Under Maintenance</h1>
-        <p className="text-white/60 mb-8 max-w-md text-center">
-          Maya is currently under maintenance for version {sysSettings?.appVersion || "1.0.0"}. Please check back later.
-        </p>
-      </div>
-    );
-  }
+  // URL Mode Detection
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('source') === 'arbite') {
+      // In Restaurant mode, we could force a specific personality or just note it
+      saveMessageLocal({ sender: "maya", text: "Restaurant Mode Activated. AR Bite specialized protocols loaded." });
+    }
+  }, []);
 
   return (
-    <div className="h-[100dvh] w-screen bg-[#050505] text-white flex flex-col items-center justify-between font-sans relative overflow-hidden m-0 p-0">
-      {/* Global Broadcast Message Top Banner */}
-      <AnimatePresence>
-        {broadcast?.message && broadcast.timestamp > dismissedBroadcastTime && (
-          <motion.div 
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -100, opacity: 0 }}
-            className="absolute top-0 left-0 w-full z-[100] p-4 font-sans"
-          >
-            <div className="max-w-4xl mx-auto bg-gradient-to-r from-orange-500 to-red-600 rounded-xl shadow-2xl p-4 flex items-center justify-between border border-orange-400/50">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="text-white shrink-0" size={24} />
-                <p className="text-white font-medium text-sm md:text-base leading-snug">
-                  {broadcast.message}
-                </p>
-              </div>
-              <button 
-                onClick={() => setDismissedBroadcastTime(broadcast.timestamp)}
-                className="px-4 py-2 shrink-0 bg-black/20 hover:bg-black/40 text-white rounded-lg transition-colors font-medium text-sm"
-              >
-                Dismiss
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Emergency Message Broadcast (Legacy / Config) */}
-      <AnimatePresence>
-        {sysSettings?.emergencyMessage && (
-          <motion.div 
-            initial={{ y: -50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="absolute top-20 left-0 w-full z-50 px-4 flex justify-center pointer-events-none"
-          >
-            <div className="bg-red-600/90 text-white text-sm font-medium px-4 py-2 rounded-full border border-red-400/50 shadow-lg backdrop-blur-md flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              {sysSettings.emergencyMessage}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Background Elements */}
+    <div className={`h-full w-full bg-maya-deep text-white flex flex-col items-center relative overflow-hidden transition-all duration-700`}>
+      {/* Background Layer */}
+      <div className="fluid-bg">
+        <motion.div 
+          animate={{ x: [0, 100, 0], y: [0, -50, 0] }}
+          transition={{ duration: 20, repeat: Infinity }}
+          className="fluid-blob w-[600px] h-[600px] bg-maya-blue top-[-100px] left-[-100px]"
+        />
+        <motion.div 
+          animate={{ x: [0, -80, 0], y: [0, 100, 0] }}
+          transition={{ duration: 25, repeat: Infinity }}
+          className="fluid-blob w-[500px] h-[500px] bg-maya-accent bottom-[-100px] right-[-100px] opacity-20"
+        />
+      </div>
       <div className="grid-bg" />
       <div className="scanning-line" />
-      <ParticleBackground />
+      <div className="particle-field" />
 
-      {/* About/How to use Dialog */}
-      <AnimatePresence>
-        {showAboutDialog && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-[#001B2E]/90 backdrop-blur-xl font-sans">
+      {/* Header Overlay */}
+      <header className="absolute top-0 inset-x-0 h-24 px-6 md:px-12 flex items-center justify-between z-50">
+        <div className="flex items-center gap-4">
+          <div className="relative">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#001b2e] border border-[#00f0ff]/20 p-6 md:p-8 rounded-2xl max-w-lg w-full text-white shadow-[0_0_50px_rgba(0,240,255,0.1)] relative"
-            >
-              <button 
-                onClick={() => setShowAboutDialog(false)}
-                className="absolute top-4 right-4 p-2 text-[#00f0ff]/50 hover:text-[#00f0ff] rounded-full hover:bg-[#00f0ff]/5 transition-colors"
-                title="Close"
-              >
-                <X size={20} />
-              </button>
-              <h2 className="text-2xl font-bold mb-4 text-[#00f0ff] tracking-tight">System Protocol: MAYA</h2>
-              <div className="space-y-4 text-white/80 text-sm md:text-base leading-relaxed font-mono">
-                <p>{">"} Maya AI is an advanced neural interface designed for seamless interaction and task automation.</p>
-                <h3 className="text-lg font-semibold text-[#00f0ff] mt-4 border-b border-[#00f0ff]/10 pb-2">Operational Guidelines</h3>
-                <ul className="list-disc pl-5 space-y-3 opacity-90">
-                  <li><strong className="text-[#00f0ff]">Neutral Voice:</strong> "Start Talking" initiates a secure real-time neural link.</li>
-                  <li><strong className="text-[#00f0ff]">Data Input:</strong> Use the terminal interface for text commands.</li>
-                  <li><strong className="text-[#00f0ff]">Visual Link:</strong> Activate the camera for visual situational awareness.</li>
-                  <li><strong className="text-[#00f0ff]">Reset:</strong> Use the system wipe (trash icon) to clear local cache.</li>
-                </ul>
-              </div>
-              <div className="mt-8 flex justify-end">
-                <button
-                  onClick={() => setShowAboutDialog(false)}
-                  className="bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] px-6 py-2 rounded-lg font-medium transition-all border border-[#00f0ff]/30"
-                >
-                  Confirm Awareness
-                </button>
-              </div>
-            </motion.div>
+              animate={{ rotate: 360 }}
+              transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+              className="w-12 h-12 rounded-full border border-maya-cyan/20 border-dashed"
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-2 h-2 bg-maya-cyan rounded-full animate-pulse shadow-[0_0_15px_rgba(0,240,255,1)]" />
+            </div>
           </div>
-        )}
-      </AnimatePresence>
-
-      {/* Privacy Policy Dialog */}
-      <AnimatePresence>
-        {showPrivacyDialog && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-[#001B2E]/90 backdrop-blur-xl font-sans">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#001b2e] border border-[#00f0ff]/20 p-6 md:p-8 rounded-2xl max-w-lg w-full text-white shadow-[0_0_50px_rgba(0,240,255,0.1)] relative"
-            >
-              <button 
-                onClick={() => setShowPrivacyDialog(false)}
-                className="absolute top-4 right-4 p-2 text-[#00f0ff]/50 hover:text-[#00f0ff] rounded-full hover:bg-[#00f0ff]/5 transition-colors"
-                title="Close"
-              >
-                <X size={20} />
-              </button>
-              <h2 className="text-2xl font-bold mb-4 text-[#00f0ff] tracking-tight">Security Protocol</h2>
-              <div className="space-y-4 text-white/80 text-sm md:text-base leading-relaxed font-mono">
-                <p>{">"} Neural link encryption active. User privacy is a priority within the MAYA environment.</p>
-                <p>{">"} No personal biometric data is stored outside the local neural core. External nodes (AdSense) may use cookies for contextual awareness.</p>
-                <p>{">"} Current historical logs are stored strictly within the user's primary browser storage device.</p>
-              </div>
-              <div className="mt-8 flex justify-end">
-                <button
-                  onClick={() => setShowPrivacyDialog(false)}
-                  className="bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] px-6 py-2 rounded-lg font-medium transition-all border border-[#00f0ff]/30"
-                >
-                  Acknowledge
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Header */}
-      <header className="absolute top-0 left-0 w-full flex justify-between items-center z-20 shrink-0 px-6 py-4 md:px-12 md:py-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#00f0ff]/5 border border-[#00f0ff]/20 flex items-center justify-center font-bold text-lg text-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.2)]">
-            M
-          </div>
-          <div className="hidden md:block">
-            <h1 className="text-xl font-bold tracking-[0.2em] text-[#00f0ff]">MAYA</h1>
-            <p className="text-[10px] font-mono text-[#00f0ff]/40 uppercase tracking-widest">Neural OS v8.2.0</p>
+          <div className="flex flex-col">
+            <h1 className="font-display font-black tracking-[0.3em] text-white text-xl glitch-text">MAYA<span className="text-maya-cyan">.OS</span></h1>
+            <div className="flex items-center gap-2">
+              <span className="text-[8px] font-mono text-maya-cyan/60 uppercase tracking-widest">{appState === 'speaking' ? 'NEURAL_PHASE_OUTPUT' : 'SYSTEM_READY'}</span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowNameModal(true)}
-            className="p-2 rounded-lg bg-[#00f0ff]/5 hover:bg-[#00f0ff]/10 text-[#00f0ff]/70 hover:text-[#00f0ff] transition-all border border-[#00f0ff]/10 flex items-center gap-2 px-3"
-            title="Set user identity"
-          >
-            <User size={16} />
-            <span className="text-[10px] font-mono uppercase tracking-wider hidden sm:inline">{userName}</span>
-          </button>
-          <button
-            onClick={() => setShowPrivacyDialog(true)}
-            className="p-2 rounded-lg bg-[#00f0ff]/5 hover:bg-[#00f0ff]/10 text-[#00f0ff]/70 transition-all border border-[#00f0ff]/10"
-            title="Security Protocols"
-          >
-            <Shield size={16} />
-          </button>
-          <button
-            onClick={() => setShowAboutDialog(true)}
-            className="p-2 rounded-lg bg-[#00f0ff]/5 hover:bg-[#00f0ff]/10 text-[#00f0ff]/70 transition-all border border-[#00f0ff]/10"
-            title="System Info"
-          >
-            <Info size={16} />
-          </button>
-          {messages.length > 0 && (
-            <button
-              onClick={clearHistory}
-              className="p-2 rounded-lg bg-red-500/5 hover:bg-red-500/10 text-red-400/70 transition-all border border-red-500/10"
-              title="System Wipe"
-            >
-              <Trash2 size={16} />
+
+        <div className="flex items-center gap-6">
+           <div className="hidden md:flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-white/50 tracking-tighter">{currentTime}</span>
+                <div className="w-8 h-3 border border-white/20 rounded-[2px] p-[1px] flex gap-[1px]">
+                   <div className="h-full bg-maya-cyan rounded-[1px]" style={{ width: `${batteryLevel}%` }} />
+                </div>
+              </div>
+              <span className="text-[8px] font-mono text-maya-cyan uppercase tracking-widest">AI_ENERGY_LEVEL</span>
+           </div>
+
+           <div className="flex items-center gap-2 obsidian-glass-premium p-1.5 rounded-2xl border border-white/5">
+            <button onClick={() => setShowNameModal(true)} className="p-2 hover:bg-maya-cyan/10 rounded-xl transition-all group" title="Identity">
+              <User size={18} className="text-maya-cyan group-hover:scale-110" />
             </button>
-          )}
-          <button
-            onClick={() => setIsMuted(!isMuted)}
-            className="p-2 rounded-lg bg-[#00f0ff]/5 hover:bg-[#00f0ff]/10 text-[#00f0ff]/70 transition-all border border-[#00f0ff]/10"
-            title={isMuted ? "Audio Offline" : "Audio Online"}
-          >
-            {isMuted ? (
-              <VolumeX size={16} />
-            ) : (
-              <Volume2 size={16} />
-            )}
-          </button>
+            <button onClick={() => setIsReelMode(!isReelMode)} className="p-2 hover:bg-pink-500/10 rounded-xl transition-all group" title="Reel Mode">
+              <Instagram size={18} className="text-pink-500 group-hover:scale-110" />
+            </button>
+            <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/5 rounded-xl transition-colors" title="Mute">
+              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            </button>
+            <button onClick={clearHistory} className="p-2 hover:bg-red-500/10 rounded-xl transition-all group" title="Reset">
+              <Trash2 size={18} className="text-red-400 group-hover:rotate-12" />
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Main HUD Interface */}
-      <main className="absolute inset-0 flex flex-col md:flex-row items-center justify-between w-full h-full z-10 overflow-hidden pt-24 pb-32 px-6 md:px-12 pointer-events-none">
+      {/* Main Container Layout */}
+      <div className="flex-1 w-full h-full flex flex-col md:flex-row relative z-20">
         
-        {/* Left HUD: System Status */}
-        <div className="hidden md:flex w-64 flex-col gap-6 pointer-events-auto">
-          <HUDPanel title="NEURAL_LOAD">
-            <div className="flex flex-col gap-3">
-              <div className="flex justify-between font-mono text-[10px] text-[#00f0ff]/70">
-                <span>SYNAPTIC_PULSE</span>
-                <span className="text-[#00f0ff]">98.2%</span>
-              </div>
-              <div className="w-full h-1 bg-[#00f0ff]/10 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: "0%" }}
-                  animate={{ width: "98.2%" }}
-                  className="h-full bg-[#00f0ff]"
-                />
-              </div>
-              <div className="flex justify-between font-mono text-[10px] text-[#00f0ff]/70">
-                <span>CORE_TEMP</span>
-                <span className="text-[#00f0ff]">32°C</span>
-              </div>
-              <div className="w-full h-1 bg-[#00f0ff]/10 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: "0%" }}
-                  animate={{ width: "45%" }}
-                  className="h-full bg-cyan-400"
-                />
-              </div>
+        {/* Left Side: Permanent Chat History */}
+        <aside className="hidden lg:flex w-80 h-full obsidian-glass flex-col border-r border-white/5 pt-24 shrink-0">
+          <div className="px-6 pb-4 border-b border-white/5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={14} className="text-maya-cyan" />
+              <h2 className="font-display font-bold text-maya-cyan tracking-widest text-[10px] uppercase">Synaptic_History</h2>
             </div>
-          </HUDPanel>
-
-          <AnimatePresence>
-            {appState === "processing" && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="flex items-center gap-3 p-4 bg-[#00f0ff]/5 border border-[#00f0ff]/20 rounded-lg"
-              >
-                <Loader2 size={16} className="text-[#00f0ff] animate-spin" />
-                <span className="text-xs font-mono text-[#00f0ff] uppercase tracking-widest">Analyzing Neural Stream...</span>
-              </motion.div>
+            <div className="flex gap-1">
+              <div className="w-1 h-3 bg-maya-cyan/20" />
+              <div className="w-1 h-3 bg-maya-cyan/50" />
+              <div className="w-1 h-3 bg-maya-cyan" />
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar scroll-smooth" id="chat-sidebar">
+            {messages.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center opacity-20 text-[10px] font-mono uppercase text-center p-8">
+                <div className="w-12 h-12 rounded-full border border-maya-cyan/20 flex items-center justify-center mb-4">
+                  <div className="w-2 h-2 bg-maya-cyan rounded-full animate-ping" />
+                </div>
+                Awaiting first synaptic impulse...
+              </div>
             )}
-          </AnimatePresence>
-        </div>
-
-        {/* Center: AI CORE */}
-        <div className="flex-1 h-full flex items-center justify-center relative pointer-events-auto">
-          <AICore state={appState} />
-        </div>
-
-        {/* Right HUD: Memory Trace */}
-        <div className="hidden md:flex w-64 flex-col gap-6 pointer-events-auto">
-          <HUDPanel title="MEMORY_TRACE">
-             <div className="font-mono text-[10px] text-[#00f0ff]/60 leading-relaxed overflow-hidden max-h-48 scrollbar-hide">
-                {userMemory ? (
-                  <p className="line-clamp-6 whitespace-pre-wrap lowercase">{">"} {userMemory}</p>
-                ) : (
-                  <p className="opacity-40 italic">{">"} current memory state: null</p>
-                )}
+            {messages.map((msg, idx) => (
+              <motion.div 
+                key={msg.id}
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+              >
+                <div className="flex items-center gap-1.5 mb-1 px-1">
+                  {msg.sender === 'maya' && <div className="w-1.5 h-1.5 rounded-full bg-maya-cyan animate-pulse" />}
+                  <span className="text-[8px] font-mono opacity-30 uppercase tracking-tighter">
+                    {msg.sender === 'user' ? userName : 'Maya_GPT'}
+                  </span>
+                </div>
+                <div className={`max-w-[90%] p-3 rounded-2xl text-[11px] font-sans leading-relaxed border ${msg.sender === 'user' ? 'bg-white/5 border-white/5 shadow-xl' : 'bg-maya-cyan/5 text-maya-cyan border-maya-cyan/20 shadow-[0_0_20px_rgba(0,240,255,0.05)]'}`}>
+                  {msg.sender === 'maya' ? <TypingText text={msg.text} /> : <StreamingText text={msg.text} />}
+                </div>
+              </motion.div>
+            ))}
+            <div style={{ float:"left", clear: "both" }}
+                ref={(el) => {
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}>
+            </div>
+          </div>
+          <div className="p-4 border-t border-white/5">
+             <div className="flex justify-between items-center text-[8px] font-mono opacity-30 mb-2">
+                <span>BUFFER_LOAD</span>
+                <span>{Math.min(messages.length * 5, 100)}%</span>
              </div>
-          </HUDPanel>
+             <div className="w-full h-0.5 bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full bg-maya-cyan transition-all duration-500" style={{ width: `${Math.min(messages.length * 5, 100)}%` }} />
+             </div>
+          </div>
+        </aside>
 
+        {/* Center: Interaction Layer */}
+        <main className="flex-1 flex flex-col items-center justify-center relative overflow-hidden pt-24 pb-48 px-6">
+          
+          {/* Top Personality Indicator */}
+          <div className="absolute top-24 inset-x-6 flex justify-center gap-2 pointer-events-none">
+            <motion.div 
+              key={activeMode.id}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="px-4 py-1.5 rounded-full obsidian-glass border border-maya-cyan/20 flex items-center gap-2"
+            >
+              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: activeMode.color }} />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-maya-cyan">{activeMode.name} MODE ACTIVE</span>
+            </motion.div>
+          </div>
+
+          {/* Neural Orb */}
+          <div className="relative w-full max-w-sm aspect-square flex items-center justify-center pointer-events-auto">
+             <NeuralOrb state={appState} activeColor={activeMode.color} />
+          </div>
+
+          {/* Live Captions Overlay */}
           <AnimatePresence>
-            {appState === "listening" && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="flex items-center gap-3 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg justify-end"
+            {(liveTranscriptions.user || liveTranscriptions.maya) && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="mt-8 text-center px-4 max-w-sm pointer-events-none"
               >
-                <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest">Vocal Stream Passive</span>
-                <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                <div className={`live-caption text-xl md:text-3xl font-display font-medium leading-tight`}>
+                  {liveTranscriptions.maya || liveTranscriptions.user}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-      </main>
+        </main>
+
+        {/* Right Side HUD Meters */}
+        <aside className="hidden xl:flex w-64 h-full flex-col gap-4 p-6 pt-24">
+           <div className="obsidian-glass rounded-2xl p-4 border border-white/5">
+              <div className="text-[10px] font-mono text-maya-cyan opacity-50 mb-3 tracking-widest uppercase">Memory_Core</div>
+              <div className="text-[11px] font-mono text-maya-cyan/80 leading-relaxed max-h-40 overflow-hidden line-clamp-6 italic">
+                {userMemory ? `> ${userMemory}` : "> Analyzing user behavior..."}
+              </div>
+           </div>
+
+           <div className="obsidian-glass rounded-2xl p-4 border border-white/5 flex flex-col gap-4">
+              <div className="text-[10px] font-mono text-maya-cyan opacity-50 tracking-widest uppercase">Diagnostic_Pulse</div>
+              {[
+                { label: 'NEURAL_PULSE', value: appState === 'speaking' ? 92 : 12 },
+                { label: 'SYNC_RATE', value: 88 },
+                { label: 'EMOTION_HULL', value: 65 }
+              ].map(meter => (
+                <div key={meter.label}>
+                  <div className="flex justify-between text-[9px] font-mono opacity-50 mb-1">
+                    <span>{meter.label}</span>
+                    <span>{meter.value}%</span>
+                  </div>
+                  <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                    <motion.div 
+                      animate={{ width: `${meter.value}%` }}
+                      className="h-full bg-maya-cyan shadow-[0_0_10px_rgba(0,240,255,0.5)]"
+                    />
+                  </div>
+                </div>
+              ))}
+           </div>
+        </aside>
+      </div>
 
       {/* Floating Interaction Controls */}
-      <footer className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-center pb-10 md:pb-12 z-20 shrink-0 gap-6">
+      <footer className="absolute bottom-0 inset-x-0 z-40 bg-gradient-to-t from-black to-transparent pt-32 pb-10 px-6 sm:px-12 flex flex-col items-center gap-8">
+        
+        {/* Dynamic Mode Selector */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 obsidian-glass-premium p-1.5 rounded-3xl border border-white/10"
+        >
+          {PERSONALITY_MODES.map(mode => (
+            <button
+              key={mode.id}
+              onClick={() => setActiveMode(mode)}
+              className={`p-3 rounded-2xl transition-all ${activeMode.id === mode.id ? 'bg-maya-cyan/20 text-maya-cyan shadow-[0_0_20px_rgba(0,240,255,0.2)]' : 'text-white/40 hover:text-white/80'}`}
+              title={mode.name}
+            >
+              {mode.icon}
+            </button>
+          ))}
+        </motion.div>
+
+        {/* Text Input Drawer */}
         <AnimatePresence>
           {showTextInput && (
             <motion.form 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
               onSubmit={handleTextSubmit}
-              className="w-full max-w-lg flex items-center gap-2 bg-[#001B2E]/60 border border-[#00f0ff]/20 rounded-xl p-2 pl-6 backdrop-blur-2xl shadow-[0_0_50px_rgba(0,240,255,0.1)] mb-4 z-[100]"
+              className="w-full max-w-md obsidian-glass rounded-2xl p-2 flex items-center gap-2 mb-4 border border-maya-cyan/20"
             >
               <input 
-                type="text"
+                autoFocus
+                className="flex-1 bg-transparent border-none outline-none p-3 text-sm font-sans"
+                placeholder="Talk to Maya..."
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Neural Input Terminal..."
-                className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-[#00f0ff]/30 text-sm md:text-base font-mono"
-                autoFocus
-                autoComplete="off"
               />
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                type="submit"
-                disabled={!textInput.trim()}
-                className="p-3 rounded-lg bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] disabled:opacity-30 transition-all border border-[#00f0ff]/20"
-              >
-                <Send size={20} />
-              </motion.button>
+              <button className="p-3 bg-maya-cyan/10 text-maya-cyan rounded-xl">
+                <Send size={18} />
+              </button>
             </motion.form>
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {showCamera && (
-            <CameraCapture 
-              onCapture={handleImageCapture}
-              onClose={() => setShowCamera(false)}
-            />
-          )}
-        </AnimatePresence>
+        <div className="flex items-center gap-6 w-full max-w-md">
+           <button 
+             onClick={() => setShowTextInput(!showTextInput)}
+             className={`p-5 rounded-3xl obsidian-glass transition-all ${showTextInput ? 'text-maya-cyan border-maya-cyan/40' : 'text-white/40'}`}
+           >
+             <Keyboard size={24} />
+           </button>
 
-        <AnimatePresence>
-          {showLiveLens && (
-            <LiveLens 
-              onFrame={handleLiveFrame}
-              onClose={() => setShowLiveLens(false)}
-              externalStream={isSessionActive ? liveSessionRef.current?.videoStream : null}
-            />
-          )}
-        </AnimatePresence>
+           <motion.button
+             whileHover={{ scale: 1.02 }}
+             whileTap={{ scale: 0.98 }}
+             onClick={toggleListening}
+             className={`p-1 w-full aspect-auto rounded-[40px] obsidian-glass border-2 flex items-center justify-between py-6 px-8 relative overflow-hidden group ${isSessionActive ? 'border-maya-cyan shadow-[0_0_50px_rgba(0,240,255,0.2)]' : 'border-white/10'}`}
+           >
+             <div className="relative z-10 flex items-center gap-4">
+                <div className={`p-3 rounded-full ${isSessionActive ? 'bg-red-500 animate-pulse' : 'bg-maya-cyan/10'}`}>
+                  {isSessionActive ? <MicOff size={20} className="text-white" /> : <Mic size={20} className="text-maya-cyan" />}
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="font-display font-bold uppercase tracking-widest text-xs">
+                    {isSessionActive ? 'Disconnecting...' : 'Neural Link'}
+                  </span>
+                  <span className="text-[8px] font-mono opacity-50 uppercase tracking-tighter">
+                    {isSessionActive ? 'Live Duplex Active' : 'Offline Mode Ready'}
+                  </span>
+                </div>
+             </div>
+             
+             {isSessionActive && (
+               <div className="flex items-center gap-1 h-6">
+                 {Array.from({ length: 6 }).map((_, i) => (
+                   <motion.div
+                     key={i}
+                     animate={{ height: [4, 16, 4] }}
+                     transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.1 }}
+                     className="w-1 bg-maya-cyan rounded-full"
+                   />
+                 ))}
+               </div>
+             )}
+             
+             {isSessionActive && <div className="absolute inset-0 bg-maya-cyan/5 animate-pulse" />}
+           </motion.button>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-2xl px-6">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={toggleListening}
-            className={`
-              relative px-10 py-5 rounded-2xl font-bold text-lg transition-all duration-500 flex-1 w-full border uppercase tracking-[0.2em]
-              ${
-                isSessionActive
-                  ? "bg-[#00f0ff]/5 text-[#00f0ff] border-[#00f0ff]/30 shadow-[0_0_30px_rgba(0,240,255,0.1)]"
-                  : "bg-[#00f0ff]/10 text-white border-[#00f0ff]/40 shadow-[0_0_40px_rgba(0,240,255,0.2)] hover:bg-[#00f0ff]/20"
-              }
-            `}
-          >
-            <div className="flex items-center justify-center gap-4">
-              {isSessionActive ? (
-                <>
-                  <div className="w-2 h-2 rounded-full bg-[#00f0ff] animate-pulse" />
-                  Neural Link Established
-                </>
-              ) : (
-                <>
-                  <Mic size={24} className="text-[#00f0ff]" />
-                  Initiate Neural Link
-                </>
-              )}
-            </div>
-          </motion.button>
-
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
-            <ControlButton 
-              active={showLiveLens} 
-              onClick={() => {
-                const newShow = !showLiveLens;
-                setShowLiveLens(newShow);
-                if (newShow && !isSessionActive) toggleListening();
-              }}
-              icon={<Video size={20} />}
-              label="VISUAL_LINK"
-            />
-            <ControlButton 
-              active={showCamera} 
-              onClick={() => setShowCamera(!showCamera)}
-              icon={<Camera size={20} />}
-              label="SNAP_MODULE"
-            />
-            <ControlButton 
-              active={showTextInput} 
-              onClick={() => setShowTextInput(!showTextInput)}
-              icon={<Keyboard size={20} />}
-              label="TERMINAL"
-            />
-          </div>
+           <button 
+             onClick={() => setShowLiveLens(!showLiveLens)}
+             className={`p-5 rounded-3xl obsidian-glass transition-all ${showLiveLens ? 'text-maya-cyan border-maya-cyan/40' : 'text-white/40'}`}
+           >
+             <Video size={24} />
+           </button>
         </div>
       </footer>
 
+      {/* Modals & Lens */}
       <AnimatePresence>
+        {showLiveLens && (
+          <LiveLens 
+            onFrame={(f) => liveSessionRef.current?.sendVideoFrame(f)}
+            onClose={() => setShowLiveLens(false)}
+            externalStream={liveSessionRef.current?.videoStream}
+          />
+        )}
         {showNameModal && (
           <NameSecurityModal 
             currentName={userName}
-            onSave={handleNameChange}
+            onSave={(n) => { setUserName(n); localStorage.setItem("maya_user_name", n); setShowNameModal(false); }}
             onClose={() => setShowNameModal(false)}
           />
         )}
@@ -719,162 +477,152 @@ export default function App() {
   );
 }
 
-// Sub-components for futuristic HUD
+function TypingText({ text }: { text: string }) {
+  const [displayedText, setDisplayedText] = useState("");
+  const [isDone, setIsDone] = useState(false);
+  
+  useEffect(() => {
+    let index = 0;
+    const interval = setInterval(() => {
+      setDisplayedText(text.slice(0, index));
+      index++;
+      if (index > text.length) {
+        clearInterval(interval);
+        setIsDone(true);
+      }
+    }, 15);
+    return () => clearInterval(interval);
+  }, [text]);
 
-function HUDPanel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="glass-panel p-4 rounded-xl relative overflow-hidden group">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-1 h-3 bg-[#00f0ff]" />
-        <h3 className="text-[10px] font-mono text-[#00f0ff] uppercase tracking-[0.3em] font-bold">{title}</h3>
-      </div>
-      {children}
-      <div className="absolute top-0 right-0 p-1 opacity-20">
-        <div className="w-4 h-4 border-t border-r border-[#00f0ff]" />
-      </div>
-      <div className="absolute bottom-0 left-0 p-1 opacity-20">
-        <div className="w-4 h-4 border-b border-l border-[#00f0ff]" />
-      </div>
-    </div>
+    <span className="relative">
+      {displayedText}
+      {!isDone && <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 0.6 }} className="inline-block w-1.5 h-3.5 bg-maya-cyan ml-0.5 align-middle" />}
+    </span>
   );
 }
 
-function ControlButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        flex flex-col items-center gap-2 p-4 rounded-xl border transition-all group relative overflow-hidden
-        ${active ? 'bg-[#00f0ff]/20 border-[#00f0ff]/50' : 'bg-[#00f0ff]/5 border-[#00f0ff]/10 hover:bg-[#00f0ff]/10'}
-      `}
-      title={label}
-    >
-      <div className={`${active ? 'text-[#00f0ff]' : 'text-[#00f0ff]/50 group-hover:text-[#00f0ff]'} transition-colors`}>
-        {icon}
-      </div>
-      <span className={`text-[8px] font-mono uppercase tracking-[0.2em] ${active ? 'text-[#00f0ff]' : 'text-[#00f0ff]/30'}`}>
-        {label}
-      </span>
-      {active && (
-        <motion.div 
-          layoutId="active-glow"
-          className="absolute inset-0 bg-[#00f0ff]/5 pointer-events-none"
-        />
-      )}
-    </button>
-  );
+function StreamingText({ text }: { text: string }) {
+  const [words, setWords] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const allWords = text.split(" ");
+    let index = 0;
+    const interval = setInterval(() => {
+      setWords(allWords.slice(0, index + 1));
+      index++;
+      if (index >= allWords.length) clearInterval(interval);
+    }, 100); // 100ms per word
+    return () => clearInterval(interval);
+  }, [text]);
+
+  return <span>{words.join(" ")}</span>;
 }
 
-function AICore({ state }: { state: AppState }) {
+function NeuralOrb({ state, activeColor = "#00F0FF" }: { state: AppState, activeColor?: string }) {
   const isInteracting = state !== 'idle';
+  const isSpeaking = state === 'speaking';
+  const isListening = state === 'listening';
   
   return (
-    <div className="relative w-80 h-80 flex items-center justify-center">
-      {/* Outer Thin Ring */}
-      <div className="maya-core-ring w-full h-full rotate-cw border-[#00f0ff]/10 border-dashed" />
-      
-      {/* Middle Segmented Arc Layer */}
-      <motion.div 
-        animate={{ rotate: isInteracting ? 360 : 0 }}
-        transition={{ duration: isInteracting ? 4 : 20, repeat: Infinity, ease: "linear" }}
-        className="absolute w-[85%] h-[85%]"
-      >
-        <svg viewBox="0 0 100 100" className="w-full h-full opacity-40">
-          <circle cx="50" cy="50" r="48" fill="none" stroke="#00f0ff" strokeWidth="0.5" strokeDasharray="10 20" />
-        </svg>
-      </motion.div>
+    <div className="relative w-80 h-80 flex items-center justify-center reels-zoom-in">
+      {/* Cinematic HUD Rings */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="hud-ring w-[100%] h-[100%] opacity-20 border-[0.5px]" />
+        <div className={`hud-ring hud-ring-active w-[95%] h-[95%] opacity-30 ${isSpeaking ? 'border-dashed' : ''}`} />
+        <div className="hud-ring hud-ring-inner w-[85%] h-[85%] opacity-40" />
+        <div className="hud-ring w-[75%] h-[75%] opacity-10 border-maya-cyan/50 rotate-45" />
+      </div>
 
-      {/* Rotating Data Arcs */}
-      <motion.div 
-        animate={{ rotate: isInteracting ? -360 : 0 }}
-        transition={{ duration: isInteracting ? 2 : 30, repeat: Infinity, ease: "linear" }}
-        className="absolute w-[70%] h-[70%]"
-      >
-        <svg viewBox="0 0 100 100" className="w-full h-full text-[#00f0ff]">
-          <path d="M 50 2 A 48 48 0 0 1 98 50" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="opacity-60" />
-          <path d="M 50 98 A 48 48 0 0 1 2 50" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="opacity-60" />
-        </svg>
-      </motion.div>
-
-      {/* Inner Glow Core */}
-      <div className={`w-[45%] h-[45%] rounded-full bg-[#00f0ff]/5 border border-[#00f0ff]/40 flex flex-col items-center justify-center pulse-glow z-10 shadow-[0_0_50px_rgba(0,240,255,0.1)] relative`}>
-        {/* Core Text */}
-        <div className="text-2xl font-bold tracking-[0.3em] text-[#00f0ff] mb-1">MAYA</div>
-        
-        {/* State Label */}
-        <div className="text-[8px] font-mono uppercase tracking-widest text-[#00f0ff]/50">
-          {state}
-        </div>
-
-        {/* Circular Waveform (Only when speaking or listening) */}
+      {/* Background Glow */}
+      <AnimatePresence>
         {isInteracting && (
-           <div className="absolute inset-0 flex items-center justify-center">
-              <svg viewBox="0 0 100 100" className="w-full h-full opacity-40">
-                <motion.circle 
-                  cx="50" cy="50" r="40" 
-                  fill="none" stroke="#00f0ff" 
-                  strokeWidth="0.5"
-                  animate={{ r: [38, 42, 38], opacity: [0.2, 0.5, 0.2] }}
-                  transition={{ duration: 0.5, repeat: Infinity }}
-                />
-              </svg>
-           </div>
-        )}
-      </div>
-
-      {/* Reactive Bars */}
-      <div className="absolute inset-x-0 -bottom-12 flex justify-center h-8 gap-1 items-end pointer-events-none">
-        {state !== 'idle' && Array.from({ length: 12 }).map((_, i) => (
-          <motion.div
-            key={i}
-            animate={{ 
-              height: [8, Math.random() * 24 + 8, 8],
-              opacity: [0.3, 1, 0.3]
-            }}
-            transition={{ 
-              duration: 0.4, 
-              repeat: Infinity, 
-              delay: i * 0.05,
-              ease: "easeInOut"
-            }}
-            className="w-[3px] bg-[#00f0ff] rounded-full"
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: [0.1, 0.4, 0.1], scale: [1, 1.2, 1] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 3, repeat: Infinity }}
+            style={{ backgroundColor: activeColor }}
+            className="absolute inset-0 rounded-full blur-[80px]"
           />
-        ))}
-      </div>
-    </div>
-  );
-}
+        )}
+      </AnimatePresence>
 
-function ParticleBackground() {
-  const particles = Array.from({ length: 40 });
-  
-  return (
-    <div className="particle-container">
-      {particles.map((_, i) => (
-        <motion.div
-          key={i}
-          className="particle"
-          initial={{ 
-            x: Math.random() * 100 + "vw", 
-            y: Math.random() * 100 + "vh",
-            scale: Math.random() * 0.5 + 0.5,
-            opacity: Math.random() * 0.2 + 0.1
-          }}
+      {/* Core AI Orb */}
+      <motion.div 
+        animate={{ 
+          scale: isInteracting ? [1, 1.05, 1] : 1,
+          rotate: isSpeaking ? 360 : 0
+        }}
+        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+        className="relative w-64 h-64 flex items-center justify-center p-4"
+      >
+        <motion.div 
           animate={{ 
-            y: ["-10vh", "110vh"],
-            x: [
-              Math.random() * 100 + "vw",
-              (Math.random() * 100 - 10) + "vw"
-            ]
+            borderRadius: ["40% 60% 70% 30% / 40% 50% 60% 50%", "50% 50% 30% 70% / 50% 60% 40% 40%", "40% 60% 70% 30% / 40% 50% 60% 50%"],
+            scale: isSpeaking ? [1, 1.1, 1] : 1
           }}
-          transition={{ 
-            duration: Math.random() * 20 + 20, 
-            repeat: Infinity, 
-            ease: "linear",
-            delay: -Math.random() * 20
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          style={{ 
+            background: `radial-gradient(circle at 30% 30%, ${activeColor} 0%, transparent 80%)`,
+            boxShadow: isSpeaking ? `0 0 120px -20px ${activeColor}` : `0 0 80px -40px ${activeColor}`
           }}
-        />
-      ))}
+          className="w-full h-full obsidian-glass orb-pulse overflow-hidden rounded-[40%] border border-white/20 relative z-10"
+        >
+          {/* Inner Neural Lights */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_40%,rgba(0,0,0,0.8)_100%)]" />
+          
+          <AnimatePresence mode="wait">
+             <motion.div 
+               key={state}
+               initial={{ opacity: 0, scale: 0.8 }}
+               animate={{ opacity: 1, scale: 1 }}
+               exit={{ opacity: 0, scale: 1.2 }}
+               className="absolute inset-0 flex items-center justify-center"
+             >
+                <span className="text-white/30 font-display font-black uppercase tracking-[0.4em] text-[9px] mb-2">{state}</span>
+             </motion.div>
+          </AnimatePresence>
+
+          {/* Listening Glows (Eye simulation) */}
+          {isListening && (
+            <div className="absolute inset-0 flex items-center justify-evenly pointer-events-none opacity-50">
+               <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 1.5 }} className="w-2 h-0.5 bg-maya-cyan blur-[2px] rounded-full" />
+               <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }} className="w-2 h-0.5 bg-maya-cyan blur-[2px] rounded-full" />
+            </div>
+          )}
+        </motion.div>
+      </motion.div>
+
+      {/* Circular Waveform Dock */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+         <motion.div 
+           animate={{ rotate: -360 }}
+           transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+           className="w-full h-full border border-maya-cyan/5 border-dotted rounded-full"
+         />
+      </div>
+
+      {/* Visualizer Bars (Reels High-End Style) */}
+      <div className="absolute inset-0 flex items-center justify-center gap-1 pointer-events-none rotate-45">
+          {Array.from({ length: 4 }).map((_, j) => (
+             <div key={j} className="absolute inset-0" style={{ transform: `rotate(${j * 90}deg)` }}>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-end gap-[2px]">
+                   {Array.from({ length: 8 }).map((_, i) => (
+                      <motion.div
+                        key={i}
+                        animate={{ 
+                          height: isSpeaking ? [2, Math.random() * 40 + 5, 2] : 2,
+                          opacity: isSpeaking ? [0.3, 1, 0.3] : 0.1
+                        }}
+                        transition={{ duration: 0.3, repeat: Infinity, delay: i * 0.05 }}
+                        className="w-[2px] bg-maya-cyan rounded-full"
+                      />
+                   ))}
+                </div>
+             </div>
+          ))}
+      </div>
     </div>
   );
 }
