@@ -28,7 +28,9 @@ export async function getMayaResponse(
 
 [LOCATION & MAPS HANDLING]:
 - Whenever the user asks for a location, always provide the Full Address and Name clearly.
-- CRITICAL: Never generate broken or internal "googleusercontent" links. If you need to provide a location, describe the place and provide a clean Google Maps search URL (e.g., https://www.google.com/maps/search/?api=1&query=Restaurant+Name+City).
+- CRITICAL: Never invent or hallucinate URLs like 'bestrestaurantsnear...com'. Never generate broken or internal "googleusercontent" links.
+- If you want to show a location, ALWAYS use a Google Search or Google Maps link. 
+- Example: https://www.google.com/maps/search/?api=1&query=pizza+restaurants+near+Trilokpuri
 - If a redirection error occurs, explain to the user that you are providing a direct search link to avoid browser blocks.
 
 [VISION & LIVE INTERACTION]:
