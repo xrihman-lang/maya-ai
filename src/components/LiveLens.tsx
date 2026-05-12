@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, X, RefreshCw, Maximize2, Minimize2, Zap } from 'lucide-react';
+import { Camera, X, RefreshCw, Maximize2, Minimize2, Zap, Monitor } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface LiveLensProps {
@@ -16,7 +16,9 @@ export default function LiveLens({ onFrame, onClose, externalStream }: LiveLensP
   const [error, setError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
-  const startCamera = async () => {
+  const [sourceType, setSourceType] = useState<'camera' | 'screen'>('camera');
+
+  const startMedia = async () => {
     if (externalStream) {
       if (videoRef.current) {
         videoRef.current.srcObject = externalStream;
@@ -32,19 +34,37 @@ export default function LiveLens({ onFrame, onClose, externalStream }: LiveLensP
          stream.getTracks().forEach(track => track.stop());
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: facingMode, 
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        } 
-      });
+      let stream: MediaStream;
+      if (sourceType === 'screen') {
+        stream = await navigator.mediaDevices.getDisplayMedia({ 
+          video: true 
+        });
+      } else {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: facingMode, 
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          } 
+        });
+      }
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setIsLive(true);
       }
+
+      // Automatically revert to camera if screen share is stopped by the user via browser UI
+      if (sourceType === 'screen') {
+        stream.getVideoTracks()[0].onended = () => {
+          setSourceType('camera');
+        };
+      }
     } catch (err) {
-      setError("Camera access denied.");
+      setError(sourceType === 'screen' ? "Screen share access denied." : "Camera access denied.");
+      if (sourceType === 'screen') {
+        setSourceType('camera'); // Revert to camera on error
+      }
     }
   };
 
@@ -59,12 +79,16 @@ export default function LiveLens({ onFrame, onClose, externalStream }: LiveLensP
   };
 
   useEffect(() => {
-    startCamera();
+    startMedia();
     return () => stopCamera();
-  }, [facingMode, externalStream]);
+  }, [facingMode, externalStream, sourceType]);
 
   const toggleCamera = () => {
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
+  const toggleSource = () => {
+    setSourceType(prev => prev === 'camera' ? 'screen' : 'camera');
   };
 
   // Interval for sending frames to Maya
@@ -78,7 +102,7 @@ export default function LiveLens({ onFrame, onClose, externalStream }: LiveLensP
         canvas.height = 360;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          if (facingMode === 'user') {
+          if (sourceType === 'camera' && facingMode === 'user') {
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
           }
@@ -123,7 +147,7 @@ export default function LiveLens({ onFrame, onClose, externalStream }: LiveLensP
           playsInline
           muted
           className="w-full h-full object-cover"
-          style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
+          style={{ transform: (sourceType === 'camera' && facingMode === 'user') ? 'scaleX(-1)' : 'none' }}
         />
 
         {/* HUD Overlay */}
@@ -131,7 +155,7 @@ export default function LiveLens({ onFrame, onClose, externalStream }: LiveLensP
            <div className="absolute top-4 left-4 flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[10px] tracking-widest text-red-100 uppercase font-bold drop-shadow-md">Live Stream</span>
+                <span className="text-[10px] tracking-widest text-red-100 uppercase font-bold drop-shadow-md">Live {sourceType === 'screen' ? 'Screen' : 'Stream'}</span>
               </div>
               {isSmartVision && (
                 <div className="flex items-center gap-2 bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded text-[8px] text-blue-300 uppercase font-bold">
@@ -144,19 +168,28 @@ export default function LiveLens({ onFrame, onClose, externalStream }: LiveLensP
         {/* Controls */}
         <div className="absolute top-4 right-4 flex gap-2 pointer-events-auto">
           <button 
+            onClick={toggleSource}
+            className={`p-1.5 rounded-full border transition-colors ${sourceType === 'screen' ? "bg-purple-600/40 border-purple-500 text-white" : "bg-black/40 border-white/10 text-white/50 hover:text-white"}`}
+            title={sourceType === 'screen' ? "Switch to Camera" : "Share Screen"}
+          >
+            <Monitor size={16} />
+          </button>
+          <button 
             onClick={() => setIsSmartVision(!isSmartVision)}
             className={`p-1.5 rounded-full border transition-colors ${isSmartVision ? "bg-blue-600/40 border-blue-500 text-white" : "bg-black/40 border-white/10 text-white/30"}`}
             title={isSmartVision ? "Disable AI Vision" : "Enable AI Vision"}
           >
             <Zap size={16} />
           </button>
-          <button 
-            onClick={toggleCamera}
-            className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/50 hover:text-white transition-colors border border-white/10"
-            title="Switch Camera"
-          >
-            <RefreshCw size={16} className={!isLive ? "animate-spin" : ""} />
-          </button>
+          {sourceType === 'camera' && (
+            <button 
+              onClick={toggleCamera}
+              className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/50 hover:text-white transition-colors border border-white/10"
+              title="Switch Camera"
+            >
+              <RefreshCw size={16} className={!isLive ? "animate-spin" : ""} />
+            </button>
+          )}
           <button 
             onClick={() => setIsMinimized(!isMinimized)}
             className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/50 hover:text-white transition-colors border border-white/10"

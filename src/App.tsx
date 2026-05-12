@@ -49,7 +49,6 @@ export default function App() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [isReelMode, setIsReelMode] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(true);
-  const [cursor, setCursor] = useState<{ x: number, y: number, action: 'idle' | 'pointing' | 'clicking' }>({ x: 50, y: 50, action: 'idle' });
   
   // Live Subtitles State
   const [liveTranscriptions, setLiveTranscriptions] = useState<{user?: string, maya?: string}>({});
@@ -90,16 +89,15 @@ export default function App() {
   }, [messages]);
 
   const saveMessageLocal = (msg: Omit<ChatMessage, "id">) => {
-    // Parse cursor commands if from Maya
+    // Parse commands if from Maya
     if (msg.sender === 'maya') {
-      const moveMatch = msg.text.match(/\[MOVE:\s*(\d+),\s*(\d+)\]/);
-      const clickMatch = msg.text.match(/\[CLICK:\s*(\d+),\s*(\d+)\]/);
-      
-      if (clickMatch) {
-         setCursor({ x: parseInt(clickMatch[1]), y: parseInt(clickMatch[2]), action: 'clicking' });
-         setTimeout(() => setCursor(prev => ({ ...prev, action: 'idle' })), 1000);
-      } else if (moveMatch) {
-         setCursor({ x: parseInt(moveMatch[1]), y: parseInt(moveMatch[2]), action: 'pointing' });
+      // Handle OPEN_URL logic
+      const urlPattern = /\[OPEN_URL:\s*(https?:\/\/[^\s\]]+)\]/;
+      const urlMatch = msg.text.match(urlPattern);
+      if (urlMatch) {
+          const targetUrl = urlMatch[1];
+          console.log("Maya is opening: " + targetUrl);
+          window.open(targetUrl, '_blank'); 
       }
     }
 
@@ -487,75 +485,7 @@ export default function App() {
           />
         )}
       </AnimatePresence>
-
-      {/* Maya's Hand / Visual Limb */}
-      <MayaCursor x={cursor.x} y={cursor.y} action={cursor.action} />
     </div>
-  );
-}
-
-function MayaCursor({ x, y, action }: { x: number, y: number, action: string }) {
-  return (
-    <motion.div
-      animate={{ 
-        left: `${x}%`, 
-        top: `${y}%`,
-        scale: action === 'clicking' ? [1, 0.8, 1.2, 1] : 1
-      }}
-      transition={{ type: "spring", stiffness: 100, damping: 20 }}
-      className="fixed z-[9999] pointer-events-none -translate-x-1/2 -translate-y-1/2"
-    >
-      {/* Outer Glow */}
-      <motion.div 
-        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-        transition={{ duration: 2, repeat: Infinity }}
-        className="absolute inset-0 bg-maya-cyan/20 blur-xl rounded-full w-12 h-12 -ml-6 -mt-6" 
-      />
-      
-      {/* Cinematic Cursor Design */}
-      <div className="relative w-8 h-8 flex items-center justify-center">
-        {/* Revolving Rings */}
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-0 border border-maya-cyan/40 border-dashed rounded-full"
-        />
-        <motion.div 
-          animate={{ rotate: -360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-2 border border-maya-cyan/60 border-dotted rounded-full"
-        />
-        
-        {/* Center Point */}
-        <div className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_10px_#fff]" />
-        
-        {/* Action Indicators */}
-        {action === 'pointing' && (
-           <motion.div 
-             initial={{ opacity: 0, scale: 0 }}
-             animate={{ opacity: 1, scale: 1 }}
-             className="absolute -top-8 text-[8px] font-mono text-maya-cyan bg-black/80 px-2 py-0.5 rounded border border-maya-cyan/30 uppercase tracking-widest"
-           >
-             Target_Lock
-           </motion.div>
-        )}
-        
-        {action === 'clicking' && (
-           <motion.div 
-             initial={{ opacity: 0, scale: 0.5 }}
-             animate={{ opacity: [1, 0], scale: [0.5, 2] }}
-             transition={{ duration: 0.5 }}
-             className="absolute inset-0 border-2 border-white rounded-full"
-           />
-        )}
-      </div>
-      
-      {/* Digital Coordinates Display */}
-      <div className="absolute top-4 left-6 flex flex-col gap-0.5 whitespace-nowrap">
-         <span className="text-[6px] font-mono text-maya-cyan/60 uppercase">X: {x.toFixed(1)}</span>
-         <span className="text-[6px] font-mono text-maya-cyan/60 uppercase">Y: {y.toFixed(1)}</span>
-      </div>
-    </motion.div>
   );
 }
 
