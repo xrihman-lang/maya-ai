@@ -5,10 +5,12 @@ import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
 import LiveLens from "./components/LiveLens";
 import NameSecurityModal from "./components/NameSecurityModal";
+import WelcomePage from "./components/WelcomePage";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
 
 type AppState = "idle" | "listening" | "processing" | "speaking";
+
 
 interface ChatMessage {
   id: string;
@@ -26,6 +28,7 @@ const PERSONALITY_MODES = [
 ];
 
 export default function App() {
+  const [showWelcome, setShowWelcome] = useState(true);
   const [batteryLevel, setBatteryLevel] = useState(88);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
@@ -171,8 +174,17 @@ export default function App() {
     }
   }, []);
 
+  if (showWelcome) {
+    return <WelcomePage onEnter={() => setShowWelcome(false)} />;
+  }
+
   return (
-    <div className={`h-full w-full bg-maya-deep text-white flex flex-col items-center relative overflow-hidden transition-all duration-700`}>
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      className={`h-full w-full bg-maya-deep text-white flex flex-col items-center relative overflow-hidden transition-all duration-700`}
+    >
       {/* Background Layer */}
       <div className="fluid-bg">
         <motion.div 
@@ -485,7 +497,7 @@ export default function App() {
           />
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
 
