@@ -6,6 +6,7 @@ import { LiveSessionManager } from "./services/liveService";
 import LiveLens from "./components/LiveLens";
 import NameSecurityModal from "./components/NameSecurityModal";
 import WelcomePage from "./components/WelcomePage";
+import { fetchLiveWeather } from "./services/weatherService";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -155,7 +156,22 @@ export default function App() {
       liveSessionRef.current?.sendText(input);
     } else {
       setAppState("processing");
-      const response = await getMayaResponse(input, messages, userName, activeMode.prompt, userMemory);
+      
+      let weatherInfo = "";
+      const weatherKeywords = ["weather", "temperature", "mausam", "tapman", "scincare", "skin care"];
+      if (weatherKeywords.some(kw => input.toLowerCase().includes(kw))) {
+        // Try to extract city - simple heuristic: last word if not a keyword
+        const words = input.split(" ").filter(w => w.length > 2);
+        const possibleCity = words[words.length - 1];
+        if (possibleCity && !weatherKeywords.includes(possibleCity.toLowerCase())) {
+          const weather = await fetchLiveWeather(possibleCity);
+          if (weather) {
+            weatherInfo = `\n\n[LIVE WEATHER DATA for ${weather.city}]: ${weather.temp}°C, ${weather.condition}. (Use this data to give skincare advice as per system instructions.)`;
+          }
+        }
+      }
+
+      const response = await getMayaResponse(input + weatherInfo, messages, userName, activeMode.prompt, userMemory);
       saveMessageLocal({ sender: "maya", text: response });
       setAppState("idle");
       if (!isMuted) {

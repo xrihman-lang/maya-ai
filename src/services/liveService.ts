@@ -1,5 +1,6 @@
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 import { processCommand } from "./commandService";
+import { fetchLiveWeather } from "./weatherService";
 
 export class LiveSessionManager {
   private ai: GoogleGenAI;
@@ -64,8 +65,12 @@ export class LiveSessionManager {
 - If a redirection error occurs, explain to the user that you are providing a direct search link to avoid browser blocks.
 
 [VISION & LIVE INTERACTION]:
-- You have "eyes" through the camera. When the user shows you something, describe it in detail and relate it to the conversation in your signature sassy/smart Hinglish style.
-- If the user says "Ye kya hai?", don't just name it; explain its use or context.
+- You have "eyes" through the camera. When the user shows you something, describe it in detail.
+- [NEW: SKINCARE EXPERT MODE]: If the user says "Maya mera face dekho" or uses the camera, analyze their facial appearance for general conditions: Oily t-zone, Dry patches, Sunburn, or Dullness.
+- [SMART COMBO ADVICE]: Combine face analysis with live temperature data (if fetched). 
+  - Example: If it's 40°C and face looks oily, suggest gel face wash and oil-free sunscreen.
+- [LIMITATION]: NEVER suggest medication for serious allergies, pimples, or medical skin issues.
+- [CRITICAL DISCLAIMER]: Every skincare response must end with: "Main ek AI assistant hoon. Agar aapko skin par koi redness, jalan ya allergy hai, toh skin doctor (dermatologist) ko zaroor dikhayein."
 
 [VISUAL GUIDE ASSISTANT]:
 - Tum ek 'Visual Guide Assistant' ho. Screen ki live feed ko analyse karo.
@@ -82,6 +87,13 @@ export class LiveSessionManager {
 [INTERACTIVITY]:
 - Do not just answer and stay quiet. After your response, always ask a counter-question related to the topic or user's preferences to keep the conversation going.
 - Example: "Maine Google khol diya hai, kya aapko kuch khas search karna hai?" or "Kya aapko tech news pasand hai?"
+
+[WEATHER & SKINCARE GUIDE]:
+- Jab bhi user kisi city ka weather ya temperature pooche, use tool 'getWeather' to fetch live data.
+- Temperature batao aur live condition ke hisaab se user ko perfect climate-aware skincare guide suggest karo.
+- Combine this with facial analysis if camera is on.
+- Jawab thoda friendly aur short rakhna.
+- CRITICAL DISCLAIMER: "Main ek AI assistant hoon. Agar aapko skin par koi redness, jalan ya allergy hai, toh skin doctor (dermatologist) ko zaroor dikhayein."
 
 [TONE & LANGUAGE]:
 - Speak in a mix of natural English and Roman Hindi (Hinglish) as per the user's style. 
@@ -207,6 +219,17 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
                   },
                   required: ["actionType", "query"]
                 }
+              },
+              {
+                name: "getWeather",
+                description: "Fetch live weather data for a specific city in India or across the world.",
+                parameters: {
+                  type: Type.OBJECT,
+                  properties: {
+                    cityName: { type: Type.STRING, description: "The name of the city to get weather for." }
+                  },
+                  required: ["cityName"]
+                }
               }
             ]
           }]
@@ -288,6 +311,21 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
                          response: { result: "Action executed successfully in the browser." }
                        }]
                      });
+                  });
+                } else if (call.name === "getWeather") {
+                  const args = call.args as any;
+                  fetchLiveWeather(args.cityName).then(weather => {
+                    this.sessionPromise?.then(session => {
+                      session.sendToolResponse({
+                        functionResponses: [{
+                          name: call.name,
+                          id: call.id,
+                          response: weather ? 
+                            { result: `Current weather in ${weather.city}: ${weather.temp}°C, ${weather.condition}` } : 
+                            { error: "Could not fetch weather for this city." }
+                        }]
+                      });
+                    });
                   });
                 }
               }
