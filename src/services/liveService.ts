@@ -94,8 +94,10 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
 
       // Apply URL check for live service too
       const isRestaurantMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('source') === 'arbite';
+      const timePrompt = `\n\n[CURRENT LOCAL TIME]: ${new Date().toLocaleString()}\nTumhe hamesha user ke device ka current local time aur date dekh kar hi baat karni hai. Purane data ya dopahar ke time ko ignore karo aur abhi ke live time ke hisaab se hi 'Good Evening', 'Good Morning' ya skincare advice do.`;
+
       const dynamicSystemInstructionAndMode = dynamicSystemInstruction.replace('[MODE SWITCHING RULES]:', `[MODE SWITCHING RULES]:
-- Is Restaurant Mode explicitly requested in URL?: ${isRestaurantMode ? 'YES' : 'NO'}`);
+- Is Restaurant Mode explicitly requested in URL?: ${isRestaurantMode ? 'YES' : 'NO'}`) + timePrompt;
       
       // Initialize Audio Contexts
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;

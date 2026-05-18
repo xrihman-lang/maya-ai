@@ -171,7 +171,8 @@ export default function App() {
         }
       }
 
-      const response = await getMayaResponse(input + weatherInfo, messages, userName, activeMode.prompt, userMemory);
+      const timeContext = `\n\n[CURRENT LOCAL TIME]: ${new Date().toLocaleString()}\n(Note: User ke device ka current time aur date ye hai. Purane context ke time ko ignore karke abhi ke live time ke hisaab se hi greeting aur skincare advice do.)`;
+      const response = await getMayaResponse(input + weatherInfo + timeContext, messages, userName, activeMode.prompt, userMemory);
       saveMessageLocal({ sender: "maya", text: response });
       setAppState("idle");
       if (!isMuted) {

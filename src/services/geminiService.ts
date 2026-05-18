@@ -69,7 +69,9 @@ export async function getMayaResponse(
 - If YES (Scenario A): You MUST immediately enter RESTAURANT MODE as an AR Bite specialist. Use this welcome line for your very first message: 'AR Bite mein aapka swagat hai! Main Maya hoon. Kya main aapko hamara 3D menu dikhaoon?'
 - If NO (Scenario B): Stay in your NORMAL MODE with your original energetic, friendly, and playful personality. NEVER mention the restaurant unless in Restaurant Mode. Do not ask the user where they came from.`;
 
-      const dynamicSystemInstruction = defaultPrompt + `\n\n[USER IDENTITY]:\nThe person you are talking to is named ${userName}. Always address them as ${userName} if they ask who they are or who you are talking to.` + memoryPrompt + modePrompt;
+      const timePrompt = `\n\n[CURRENT LOCAL TIME]: ${new Date().toLocaleString()}\nTumhe hamesha user ke device ka current local time aur date dekh kar hi baat karni hai. Purane data ya dopahar ke time ko ignore karo aur abhi ke live time ke hisaab se hi 'Good Evening', 'Good Morning' ya skincare advice do.`;
+
+      const dynamicSystemInstruction = defaultPrompt + `\n\n[USER IDENTITY]:\nThe person you are talking to is named ${userName}. Always address them as ${userName} if they ask who they are or who you are talking to.` + memoryPrompt + modePrompt + timePrompt;
 
       // SLIDING WINDOW MEMORY: Keep only the last 20 messages to prevent "buffer full" (context window overflow)
       const recentHistory = history.slice(-20);
