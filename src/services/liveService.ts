@@ -18,8 +18,9 @@ export class LiveSessionManager {
   private isPlaying: boolean = false;
   public isMuted: boolean = false;
   private isConnected: boolean = false;
+  private isReconnecting: boolean = false;
   private retryCount: number = 0;
-  private maxRetries: number = 3;
+  private maxRetries: number = 5;
   private heartbeatInterval: any = null;
   
   private silenceTimer: any = null;
@@ -42,7 +43,7 @@ export class LiveSessionManager {
           session.sendRealtimeInput({ text: "" });
         }).catch(() => {});
       }
-    }, 25000); // Pulse every 25s
+    }, 15000); // Pulse every 15s (faster to prevent proxy timeouts)
   }
 
   private stopHeartbeat() {
@@ -242,8 +243,15 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
             this.onStateChange("listening");
             this.startHeartbeat();
             
-            // Immediate introduction
-            this.sendText("[SYSTEM: The session has just started. Give your short, upbeat introduction immediately.]");
+            if (!this.isReconnecting) {
+              // Immediate introduction only on fresh start
+              this.sendText("[SYSTEM: The session has just started. Give your short, upbeat introduction immediately.]");
+            } else {
+              // On reconnect, just stay silent and ready or give a tiny subtle hint
+              console.log("Reconnected successfully.");
+              this.isReconnecting = false;
+            }
+            
             // Start the silence timer just in case
             this.startSilenceTimer();
           },
@@ -342,20 +350,25 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
             if (wasConnected && this.retryCount < this.maxRetries) {
                console.log(`Reconnecting... attempt ${this.retryCount + 1}`);
                this.retryCount++;
-               setTimeout(() => this.start(), 2000); // Wait 2s before retry
+               this.isReconnecting = true;
+               setTimeout(() => this.start(), 1500); // Wait 1.5s before retry
             } else {
+               this.isReconnecting = false;
                this.stop();
             }
           },
           onerror: (err) => {
             console.error("Live API Error:", err);
+            const wasConnected = this.isConnected;
             this.isConnected = false;
             this.stopHeartbeat();
             
-            if (this.retryCount < this.maxRetries) {
+            if (wasConnected && this.retryCount < this.maxRetries) {
                this.retryCount++;
-               setTimeout(() => this.start(), 2000);
+               this.isReconnecting = true;
+               setTimeout(() => this.start(), 1500);
             } else {
+               this.isReconnecting = false;
                this.stop();
             }
           }
