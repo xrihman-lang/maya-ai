@@ -18,6 +18,9 @@ export class LiveSessionManager {
   private isPlaying: boolean = false;
   public isMuted: boolean = false;
   private isConnected: boolean = false;
+  private retryCount: number = 0;
+  private maxRetries: number = 3;
+  private heartbeatInterval: any = null;
   
   private silenceTimer: any = null;
 
@@ -28,6 +31,25 @@ export class LiveSessionManager {
   constructor(userName: string = "User", public systemPrompt: string = "") {
     this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     this.userName = userName;
+  }
+
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeatInterval = setInterval(() => {
+      if (this.isConnected && this.sessionPromise) {
+        // Send a tiny empty text frame as a keep-alive heartbeat
+        this.sessionPromise.then(session => {
+          session.sendRealtimeInput({ text: "" });
+        }).catch(() => {});
+      }
+    }, 25000); // Pulse every 25s
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
   }
 
   private startSilenceTimer() {
@@ -50,6 +72,17 @@ export class LiveSessionManager {
   async start() {
     try {
       this.onStateChange("processing");
+      
+      // Cleanup existing resources if any (for restart/reconnect)
+      if (this.mediaStream) {
+        this.mediaStream.getTracks().forEach(t => t.stop());
+        this.mediaStream = null;
+      }
+      if (this.audioContext) {
+        this.audioContext.close().catch(() => {});
+        this.audioContext = null;
+      }
+      this.stopHeartbeat();
       
       const defaultInstruction = `Tumhara naam Maya hai. Tum sirf ek AI software nahi ho, balki user ki ek highly intelligent real-life Best Friend, Weather Expert aur Skincare Consultant ho. Tumhe user ke live camera feed, live temperature, aur purani baaton ka access hai.
 
@@ -205,7 +238,9 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
           onopen: () => {
             console.log("Live API Connected");
             this.isConnected = true;
+            this.retryCount = 0; // Reset on success
             this.onStateChange("listening");
+            this.startHeartbeat();
             
             // Immediate introduction
             this.sendText("[SYSTEM: The session has just started. Give your short, upbeat introduction immediately.]");
@@ -300,13 +335,29 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
           },
           onclose: () => {
             console.log("Live API Closed");
+            const wasConnected = this.isConnected;
             this.isConnected = false;
-            this.stop();
+            this.stopHeartbeat();
+            
+            if (wasConnected && this.retryCount < this.maxRetries) {
+               console.log(`Reconnecting... attempt ${this.retryCount + 1}`);
+               this.retryCount++;
+               setTimeout(() => this.start(), 2000); // Wait 2s before retry
+            } else {
+               this.stop();
+            }
           },
           onerror: (err) => {
             console.error("Live API Error:", err);
             this.isConnected = false;
-            this.stop();
+            this.stopHeartbeat();
+            
+            if (this.retryCount < this.maxRetries) {
+               this.retryCount++;
+               setTimeout(() => this.start(), 2000);
+            } else {
+               this.stop();
+            }
           }
         }
       });
@@ -373,6 +424,7 @@ If anyone asks about Zishan's friends, mention: Adil, Malik, Akram, Arman, and H
   stop() {
     this.isConnected = false;
     this.clearSilenceTimer();
+    this.stopHeartbeat();
     if (this.processor) {
       this.processor.disconnect();
       this.processor = null;
