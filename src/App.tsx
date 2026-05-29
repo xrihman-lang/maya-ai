@@ -6,6 +6,7 @@ import { LiveSessionManager } from "./services/liveService";
 import LiveLens from "./components/LiveLens";
 import NameSecurityModal from "./components/NameSecurityModal";
 import WelcomePage from "./components/WelcomePage";
+import LoginPage from "./components/LoginPage";
 import { fetchLiveWeather } from "./services/weatherService";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
@@ -30,6 +31,7 @@ const PERSONALITY_MODES = [
 
 export default function App() {
   const [showWelcome, setShowWelcome] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState(88);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
@@ -192,7 +194,18 @@ export default function App() {
   }, []);
 
   if (showWelcome) {
-    return <WelcomePage onEnter={() => setShowWelcome(false)} />;
+    return <WelcomePage onEnter={() => {
+      setShowWelcome(false);
+      setShowLogin(true);
+    }} />;
+  }
+
+  if (showLogin) {
+    return <LoginPage onLogin={(name) => {
+      setUserName(name);
+      localStorage.setItem("maya_user_name", name);
+      setShowLogin(false);
+    }} />;
   }
 
   return (
