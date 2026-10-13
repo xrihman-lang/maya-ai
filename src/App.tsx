@@ -5,8 +5,6 @@ import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
 import LiveLens from "./components/LiveLens";
 import NameSecurityModal from "./components/NameSecurityModal";
-import WelcomePage from "./components/WelcomePage";
-import LoginPage from "./components/LoginPage";
 import { fetchLiveWeather } from "./services/weatherService";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
@@ -30,8 +28,6 @@ const PERSONALITY_MODES = [
 ];
 
 export default function App() {
-  const [showWelcome, setShowWelcome] = useState(true);
-  const [showLogin, setShowLogin] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState(88);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
@@ -193,21 +189,6 @@ export default function App() {
     }
   }, []);
 
-  if (showWelcome) {
-    return <WelcomePage onEnter={() => {
-      setShowWelcome(false);
-      setShowLogin(true);
-    }} />;
-  }
-
-  if (showLogin) {
-    return <LoginPage onLogin={(name) => {
-      setUserName(name);
-      localStorage.setItem("maya_user_name", name);
-      setShowLogin(false);
-    }} />;
-  }
-
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
@@ -246,8 +227,13 @@ export default function App() {
             </div>
           </div>
           <div className="flex flex-col">
-            <h1 className="font-display font-black tracking-[0.3em] text-white text-xl glitch-text">MAYA<span className="text-maya-cyan">.OS</span></h1>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="font-display font-black tracking-[0.3em] text-white text-xl glitch-text">MAYA<span className="text-maya-cyan">.OS</span></h1>
+              <span className="text-[9px] font-mono font-bold tracking-wider px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                Powered by GDX
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap mt-0.5">
               <span className="text-[8px] font-mono text-maya-cyan/60 uppercase tracking-widest">{appState === 'speaking' ? 'NEURAL_PHASE_OUTPUT' : 'SYSTEM_READY'}</span>
             </div>
           </div>
@@ -265,6 +251,7 @@ export default function App() {
            </div>
 
            <div className="flex items-center gap-2 obsidian-glass-premium p-1.5 rounded-2xl border border-white/5">
+
             <button onClick={() => setShowNameModal(true)} className="p-2 hover:bg-maya-cyan/10 rounded-xl transition-all group" title="Identity">
               <User size={18} className="text-maya-cyan group-hover:scale-110" />
             </button>
@@ -508,6 +495,13 @@ export default function App() {
              <Video size={24} />
            </button>
         </div>
+
+        {/* Powered By Badge */}
+        <div className="flex items-center justify-center px-3.5 py-1.5 rounded-full obsidian-glass border border-white/10 shadow-lg text-[9px] font-mono">
+          <span className="text-amber-300 font-bold tracking-wider">
+            Powered by GDX
+          </span>
+        </div>
       </footer>
 
       {/* Modals & Lens */}
@@ -526,6 +520,7 @@ export default function App() {
             onClose={() => setShowNameModal(false)}
           />
         )}
+
       </AnimatePresence>
     </motion.div>
   );

@@ -1,4 +1,34 @@
 export async function playPCM(base64Data: string): Promise<void> {
+  if (!base64Data) return;
+
+  try {
+    // If it's a standard WAV container (starts with 'UklGR' which is 'RIFF' in Base64)
+    if (base64Data.startsWith("UklGR")) {
+      return new Promise<void>((resolve) => {
+        try {
+          const audio = new Audio(`data:audio/wav;base64,${base64Data}`);
+          audio.onended = () => resolve();
+          audio.onerror = () => {
+            // Fallback to Web Audio API if HTML5 Audio encounters an issue
+            playRawPCM(base64Data).then(resolve);
+          };
+          audio.play().catch(() => {
+            playRawPCM(base64Data).then(resolve);
+          });
+        } catch {
+          playRawPCM(base64Data).then(resolve);
+        }
+      });
+    }
+
+    // Otherwise play as raw PCM
+    return playRawPCM(base64Data);
+  } catch (error) {
+    console.error("Error playing audio:", error);
+  }
+}
+
+async function playRawPCM(base64Data: string): Promise<void> {
   try {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) {
@@ -27,6 +57,6 @@ export async function playPCM(base64Data: string): Promise<void> {
       source.onended = () => resolve();
     });
   } catch (error) {
-    console.error("Error playing audio:", error);
+    console.error("Error playing raw PCM:", error);
   }
 }
