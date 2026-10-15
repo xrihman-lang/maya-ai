@@ -54,15 +54,6 @@ async function getCityWeather(cityName: string) {
   }
 }
 
-// API Key Validation Middleware removed as per request.
-
-// ==========================================
-// 1. HEALTH & SYSTEM STATUS
-// ==========================================
-const startTime = Date.now();
-
-// API endpoints removed.
-
 
 // ==========================================
 // 3. CORE CHAT ENDPOINT: POST /api/v1/chat

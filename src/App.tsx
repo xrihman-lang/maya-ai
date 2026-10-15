@@ -5,6 +5,7 @@ import { processCommand } from "./services/commandService";
 import { LiveSessionManager } from "./services/liveService";
 import LiveLens from "./components/LiveLens";
 import NameSecurityModal from "./components/NameSecurityModal";
+import PrivacyPolicyModal from "./components/PrivacyPolicyModal";
 import { fetchLiveWeather } from "./services/weatherService";
 import { playPCM } from "./utils/audioUtils";
 import { motion, AnimatePresence } from "motion/react";
@@ -49,8 +50,16 @@ export default function App() {
   const [textInput, setTextInput] = useState("");
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [isReelMode, setIsReelMode] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(true);
+
+  // Check URL hash or query for privacy policy direct link
+  useEffect(() => {
+    if (window.location.hash === '#privacy' || window.location.pathname === '/privacy' || new URLSearchParams(window.location.search).get('privacy') === 'true') {
+      setShowPrivacyModal(true);
+    }
+  }, []);
   
   // Live Subtitles State
   const [liveTranscriptions, setLiveTranscriptions] = useState<{user?: string, maya?: string}>({});
@@ -254,6 +263,9 @@ export default function App() {
 
             <button onClick={() => setShowNameModal(true)} className="p-2 hover:bg-maya-cyan/10 rounded-xl transition-all group" title="Identity">
               <User size={18} className="text-maya-cyan group-hover:scale-110" />
+            </button>
+            <button onClick={() => setShowPrivacyModal(true)} className="p-2 hover:bg-emerald-500/10 rounded-xl transition-all group" title="Privacy Policy">
+              <Shield size={18} className="text-emerald-400 group-hover:scale-110" />
             </button>
             <button onClick={() => setIsReelMode(!isReelMode)} className="p-2 hover:bg-pink-500/10 rounded-xl transition-all group" title="Reel Mode">
               <Instagram size={18} className="text-pink-500 group-hover:scale-110" />
@@ -496,11 +508,20 @@ export default function App() {
            </button>
         </div>
 
-        {/* Powered By Badge */}
-        <div className="flex items-center justify-center px-3.5 py-1.5 rounded-full obsidian-glass border border-white/10 shadow-lg text-[9px] font-mono">
-          <span className="text-amber-300 font-bold tracking-wider">
-            Powered by GDX
-          </span>
+        {/* Powered By Badge & Privacy Policy */}
+        <div className="flex items-center gap-3 flex-wrap justify-center">
+          <div className="flex items-center justify-center px-3.5 py-1.5 rounded-full obsidian-glass border border-white/10 shadow-lg text-[9px] font-mono">
+            <span className="text-amber-300 font-bold tracking-wider">
+              Powered by GDX
+            </span>
+          </div>
+          <button
+            onClick={() => setShowPrivacyModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full obsidian-glass border border-white/10 shadow-lg text-[9px] font-mono text-white/60 hover:text-maya-cyan hover:border-maya-cyan/40 transition-all cursor-pointer"
+          >
+            <Shield size={11} className="text-maya-cyan" />
+            <span>Privacy Policy</span>
+          </button>
         </div>
       </footer>
 
@@ -518,6 +539,17 @@ export default function App() {
             currentName={userName}
             onSave={(n) => { setUserName(n); localStorage.setItem("maya_user_name", n); setShowNameModal(false); }}
             onClose={() => setShowNameModal(false)}
+          />
+        )}
+        {showPrivacyModal && (
+          <PrivacyPolicyModal 
+            onClose={() => setShowPrivacyModal(false)}
+            onClearData={() => {
+              setMessages([]);
+              setUserMemory("");
+              setUserName("User");
+              resetMayaSession();
+            }}
           />
         )}
 
