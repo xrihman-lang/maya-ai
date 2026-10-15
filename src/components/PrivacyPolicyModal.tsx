@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Eye, Mic, HardDrive, Cpu, RefreshCw, X, CheckCircle2, ChevronRight, Globe2 } from 'lucide-react';
+import { Shield, Lock, Eye, Mic, HardDrive, Cpu, RefreshCw, X, CheckCircle2, ChevronRight, Globe2, Copy, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface PrivacyPolicyModalProps {
@@ -11,6 +11,21 @@ export default function PrivacyPolicyModal({ onClose, onClearData }: PrivacyPoli
   const [lang, setLang] = useState<'hinglish' | 'en'>('hinglish');
   const [activeTab, setActiveTab] = useState<'summary' | 'details' | 'controls'>('summary');
   const [dataCleared, setDataCleared] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+
+  const policyUrl = 'https://mayaai.sbs/privacy';
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(policyUrl);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2500);
+    } catch (e) {
+      // Fallback
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2500);
+    }
+  };
 
   const handleClearAllData = () => {
     if (confirm(lang === 'hinglish' ? 'Kya aap apna saara local chat history aur memory delete karna chahte hain?' : 'Are you sure you want to delete all local history and saved preferences?')) {
@@ -79,6 +94,35 @@ export default function PrivacyPolicyModal({ onClose, onClearData }: PrivacyPoli
             >
               <X size={18} />
             </button>
+          </div>
+        </div>
+
+        {/* Official URL bar for mayaai.sbs */}
+        <div className="px-5 py-2.5 bg-maya-cyan/[0.04] border-b border-maya-cyan/15 flex items-center justify-between gap-3 text-xs flex-wrap">
+          <div className="flex items-center gap-2 text-white/80 font-mono text-[11px] truncate">
+            <span className="text-maya-cyan font-bold">Public URL:</span>
+            <a href="https://mayaai.sbs/privacy" target="_blank" rel="noopener noreferrer" className="text-white hover:text-maya-cyan underline truncate">
+              https://mayaai.sbs/privacy
+            </a>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopyUrl}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] font-mono text-maya-cyan border border-white/10 transition-colors"
+              title="Copy URL to clipboard"
+            >
+              {copiedUrl ? <CheckCircle2 size={12} className="text-emerald-400" /> : <Copy size={12} />}
+              <span>{copiedUrl ? 'Copied!' : 'Copy URL'}</span>
+            </button>
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-maya-cyan/10 hover:bg-maya-cyan/20 text-[11px] font-mono text-maya-cyan border border-maya-cyan/25 transition-colors"
+            >
+              <span>Open Page</span>
+              <ExternalLink size={11} />
+            </a>
           </div>
         </div>
 
@@ -232,6 +276,30 @@ export default function PrivacyPolicyModal({ onClose, onClearData }: PrivacyPoli
                   {lang === 'hinglish'
                     ? 'Aap jab chahein apne browser ki history aur saved memory ko "Reset" button ya niche diye gaye Data Controls se instantly clear kar sakte hain.'
                     : 'You retain total control over your conversational history. Stored browser data can be purged instantaneously at any time.'}
+                </p>
+              </section>
+
+              <section className="space-y-2">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Globe2 size={16} className="text-maya-cyan" />
+                  5. Google AdSense & Cookies
+                </h3>
+                <p className="text-white/70">
+                  {lang === 'hinglish'
+                    ? 'Hum mayaai.sbs par Google AdSense use karte hain. Google aur anya 3rd-party vendors cookies ka use karte hain taaki users ke purane visits ke aadhar par relevant ads dikhaye jaa sakein. Aap Google Ads Settings par jaakar personalized ads ko opt out kar sakte hain.'
+                    : 'We use Google AdSense on mayaai.sbs. Third-party vendors, including Google, use cookies (including the DoubleClick cookie) to serve ads based on user visits to this and other websites. Users may opt out of personalized advertising by visiting Google Ads Settings (google.com/settings/ads).'}
+                </p>
+              </section>
+
+              <section className="space-y-2">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Lock size={16} className="text-maya-cyan" />
+                  6. Official Domain & Contact
+                </h3>
+                <p className="text-white/70">
+                  <strong>Official Website:</strong> <a href="https://mayaai.sbs" target="_blank" rel="noopener noreferrer" className="text-maya-cyan underline">https://mayaai.sbs</a><br />
+                  <strong>Direct Policy URL:</strong> <a href="https://mayaai.sbs/privacy" target="_blank" rel="noopener noreferrer" className="text-maya-cyan underline">https://mayaai.sbs/privacy</a><br />
+                  <strong>Inquiries / Contact:</strong> <a href="mailto:mohdalikhan990x@gmail.com" className="text-maya-cyan underline">mohdalikhan990x@gmail.com</a>
                 </p>
               </section>
             </div>

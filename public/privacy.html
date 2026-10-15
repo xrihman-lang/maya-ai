@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy - MAYA AI (mayaai.sbs)</title>
+  <meta name="description" content="Official Privacy Policy for MAYA AI accessible at https://mayaai.sbs. Learn how your data, audio, camera, and local preferences are protected." />
+  <link rel="canonical" href="https://mayaai.sbs/privacy" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <meta name="theme-color" content="#090a0f" />
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: rgba(18, 20, 29, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --cyan: #00f0ff;
+      --cyan-glow: rgba(0, 240, 255, 0.15);
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.65;
+      padding: 24px 16px 80px;
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 240, 255, 0.1), transparent),
+        radial-gradient(circle at 100% 100%, rgba(147, 51, 234, 0.05), transparent);
+      background-attachment: fixed;
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    header {
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: #fff;
+    }
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cyan);
+      font-weight: 800;
+      font-size: 18px;
+      box-shadow: 0 0 15px var(--cyan-glow);
+    }
+    .brand-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--cyan);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .back-btn:hover {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: rgba(0, 240, 255, 0.4);
+      transform: translateY(-1px);
+    }
+    .meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      font-size: 12px;
+      color: var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      width: fit-content;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.25;
+      letter-spacing: -0.03em;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 8px;
+    }
+    h2 .num {
+      color: var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 16px;
+    }
+    p {
+      margin-bottom: 14px;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 14.5px;
+    }
+    p:last-child {
+      margin-bottom: 0;
+    }
+    ul {
+      margin: 12px 0 16px 24px;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+    li strong {
+      color: #fff;
+    }
+    a {
+      color: var(--cyan);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    a:hover {
+      color: #70f7ff;
+    }
+    .highlight-box {
+      background: rgba(0, 240, 255, 0.05);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin: 16px 0;
+    }
+    .highlight-box p {
+      color: #e0faff;
+      font-size: 14px;
+    }
+    .warn-box {
+      background: rgba(234, 179, 8, 0.08);
+      border: 1px solid rgba(234, 179, 8, 0.25);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin: 16px 0;
+    }
+    .warn-box p {
+      color: #fef08a;
+      font-size: 13.5px;
+    }
+    .url-chip {
+      background: rgba(255, 255, 255, 0.06);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      color: var(--cyan);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    footer {
+      text-align: center;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="nav-bar">
+        <a href="/" class="brand">
+          <div class="brand-logo">M</div>
+          <div class="brand-title">MAYA AI</div>
+        </a>
+        <a href="/" class="back-btn">← Back to Maya AI Assistant</a>
+      </div>
+      <div class="meta-badge">URL: https://mayaai.sbs/privacy</div>
+      <h1>Privacy Policy</h1>
+      <p class="subtitle">Effective Date: October 15, 2026 • Official Policy for <span class="url-chip">https://mayaai.sbs</span></p>
+    </header>
+
+    <main>
+      <div class="card">
+        <h2><span class="num">01.</span> Introduction</h2>
+        <p>Welcome to <strong>MAYA AI</strong> (accessible at <a href="https://mayaai.sbs">https://mayaai.sbs</a>, hereinafter referred to as "the Website", "Application", or "Service"). We respect your privacy and are committed to protecting any personal data you may provide or create while interacting with MAYA AI.</p>
+        <p>This Privacy Policy explains what information is collected, how it is processed, the rights you have over your data, and our strict commitment to zero unauthorized sharing or monetization of your personal information.</p>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">02.</span> Information We Collect and Process</h2>
+        <p>When you interact with MAYA AI, the application processes the following types of inputs solely to deliver responsive conversational assistance:</p>
+        <ul>
+          <li><strong>Text & Conversational Messages:</strong> User prompts, queries, and conversational context sent during active sessions.</li>
+          <li><strong>Voice & Microphone Audio:</strong> When you activate live voice mode, audio is streamed temporarily to generate speech transcripts. Audio streams are processed ephemerally in real-time and are never stored or archived on our servers.</li>
+          <li><strong>Camera & LiveLens Image Data:</strong> When you choose to use the camera feature for skincare analysis or visual diagnosis, image frames are encoded as temporary Base64 representations and processed on-demand. Photos are never uploaded to a persistent photo gallery or stored in a user database.</li>
+          <li><strong>City / Weather Context:</strong> When you provide a city name (or request local weather advice), the city query is used to fetch current atmospheric data to personalize skincare tips. We do not track or store persistent background GPS coordinates.</li>
+          <li><strong>Local Browser Storage (LocalStorage):</strong> Chat logs, custom nickname/preferences, and contextual conversational memory are stored strictly on your local device via your web browser's <code>localStorage</code>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">03.</span> How Your Information is Used</h2>
+        <p>Your inputs are utilized strictly for the following purposes:</p>
+        <ul>
+          <li>Delivering intelligent, contextual AI responses and personalized skincare recommendations.</li>
+          <li>Generating real-time speech responses using Text-to-Speech (TTS) technology.</li>
+          <li>Retaining your conversational continuity on your device via client-side storage.</li>
+          <li>Maintaining security, preventing service abuse, and ensuring app reliability.</li>
+        </ul>
+        <div class="highlight-box">
+          <p><strong>Zero Data Selling:</strong> We do NOT sell, lease, rent, or trade your personal data, audio, or images to third-party data brokers or marketing firms.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">04.</span> Third-Party Service Providers & AI Integrations</h2>
+        <p>To deliver advanced capabilities, MAYA AI securely connects with trusted service providers:</p>
+        <ul>
+          <li><strong>Google Gemini API:</strong> Artificial Intelligence model inference is executed securely through official Google Gemini APIs via our secure server-side proxy. Data transmitted is encrypted over TLS (Transport Layer Security).</li>
+          <li><strong>WeatherAPI:</strong> Used to retrieve live public temperature, humidity, and weather conditions based on user-provided city names.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">05.</span> Google AdSense & Cookie Disclosures</h2>
+        <p>We use <strong>Google AdSense</strong> (Publisher ID: <code>ca-pub-6597540581749531</code>) to serve advertisements on <a href="https://mayaai.sbs">mayaai.sbs</a>.</p>
+        <ul>
+          <li>Third-party vendors, including Google, use cookies to serve ads based on a user's prior visits to this website or other websites on the Internet.</li>
+          <li>Google's use of advertising cookies enables it and its partners to serve ads to users based on their visit to your sites and/or other sites on the Internet.</li>
+          <li>Users may opt out of personalized advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer">Google Ads Settings</a> or via <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer">www.aboutads.info</a>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">06.</span> Web Analytics & Tracking</h2>
+        <p>We use Google Analytics (Tag ID: <code>G-TVZD6YK3YN</code>) to collect anonymized statistical data regarding site traffic, device types, and page engagement. This information helps us optimize application speed, stability, and responsiveness. Analytics data does not contain personal conversation transcripts.</p>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">07.</span> General Health & Skincare Disclaimer</h2>
+        <div class="warn-box">
+          <p><strong>Disclaimer:</strong> MAYA AI is an interactive conversational companion and general skincare wellness advisor. MAYA AI is NOT a licensed dermatologist, physician, or medical provider. Suggestions provided regarding skincare routines, hydration, or sunscreen are for general educational purposes only. Always consult a certified healthcare professional or dermatologist for any medical condition, skin rash, or prescription treatment.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">08.</span> User Controls & Data Purge</h2>
+        <p>You have full autonomy over your data:</p>
+        <ul>
+          <li><strong>1-Click Data Wipe:</strong> Within the MAYA AI application, click the Shield icon or visit the Privacy modal and select <em>"Purge All Data"</em> to instantly delete all messages, names, and memories from your browser.</li>
+          <li><strong>Browser Clearing:</strong> You can clear your browser's local storage and cookies at any time through your browser's settings.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">09.</span> Children's Online Privacy Protection (COPPA)</h2>
+        <p>MAYA AI does not knowingly target, solicit, or collect personal information from children under the age of 13. If you believe a child has provided personal information to our service, please contact us immediately so we can remove it.</p>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">10.</span> Changes to This Privacy Policy</h2>
+        <p>We may update this Privacy Policy from time to time to reflect operational, legal, or regulatory updates. Any changes will be posted directly to this URL: <a href="https://mayaai.sbs/privacy">https://mayaai.sbs/privacy</a> with an updated effective date.</p>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">11.</span> Contact & Ownership Information</h2>
+        <p>If you have any questions, inquiries, or feedback regarding this Privacy Policy or your data, please contact the site administrator:</p>
+        <ul>
+          <li><strong>Website:</strong> <a href="https://mayaai.sbs">https://mayaai.sbs</a></li>
+          <li><strong>Email:</strong> <a href="mailto:mohdalikhan990x@gmail.com">mohdalikhan990x@gmail.com</a></li>
+          <li><strong>Product:</strong> MAYA AI Assistant</li>
+        </ul>
+      </div>
+    </main>
+
+    <footer>
+      <p>&copy; 2026 MAYA AI (mayaai.sbs). All rights reserved.</p>
+      <p style="margin-top: 6px;"><a href="/">Open MAYA AI Assistant</a> • <a href="https://mayaai.sbs/privacy">Privacy Policy</a></p>
+    </footer>
+  </div>
+</body>
+</html>

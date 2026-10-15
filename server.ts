@@ -375,6 +375,16 @@ app.get(['/api/v1/weather', '/api/weather'], async (req: Request, res: Response)
 });
 
 // ==========================================
+// PRIVACY POLICY ENDPOINT (mayaai.sbs & AdSense)
+// ==========================================
+app.get(['/privacy', '/privacy-policy', '/privacy.html'], (req: Request, res: Response) => {
+  const privacyPath = process.env.NODE_ENV === 'production'
+    ? path.resolve(__dirname, 'dist', 'privacy.html')
+    : path.resolve(__dirname, 'public', 'privacy.html');
+  res.sendFile(privacyPath);
+});
+
+// ==========================================
 // VITE SETUP (Full Stack SPA + Express)
 // ==========================================
 async function start() {

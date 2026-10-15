@@ -54,9 +54,12 @@ export default function App() {
   const [isReelMode, setIsReelMode] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(true);
 
-  // Check URL hash or query for privacy policy direct link
+  // Check URL hash, path, or query for privacy policy direct link
   useEffect(() => {
-    if (window.location.hash === '#privacy' || window.location.pathname === '/privacy' || new URLSearchParams(window.location.search).get('privacy') === 'true') {
+    const p = window.location.pathname.toLowerCase();
+    const h = window.location.hash.toLowerCase();
+    const q = new URLSearchParams(window.location.search).get('privacy');
+    if (h === '#privacy' || p === '/privacy' || p === '/privacy-policy' || q === 'true' || q === '1') {
       setShowPrivacyModal(true);
     }
   }, []);
@@ -543,7 +546,12 @@ export default function App() {
         )}
         {showPrivacyModal && (
           <PrivacyPolicyModal 
-            onClose={() => setShowPrivacyModal(false)}
+            onClose={() => {
+              setShowPrivacyModal(false);
+              if (window.location.pathname.toLowerCase().includes('/privacy') || window.location.hash === '#privacy') {
+                window.history.replaceState(null, '', '/');
+              }
+            }}
             onClearData={() => {
               setMessages([]);
               setUserMemory("");
